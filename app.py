@@ -116,7 +116,9 @@ def get_visible_board(room_id, player_color):
             if target != "--" and not target.startswith(turn):
                 visible[mr][mc] = "sonar"
 
-    if room["turn_count"] >= 10:
+    # 👁️ 新ルール：5ターン（10手）周期で、1ターンだけキングを強制表示する！
+    current_round = room["turn_count"] // 2
+    if current_round > 0 and current_round % 5 == 0:
         for r in range(8):
             for c in range(8):
                 if board[r][c] in ["WK", "BK"]:
@@ -169,7 +171,6 @@ def get_game(room_id):
     if player_id in room["players"]:
         player_color = "W" if room["players"].index(player_id) == 0 else "B"
     
-    # 🌟 バグ修正: 1台で交代プレイ（ローカル）の時は、常に今のターンの陣営に視点を切り替える！
     if len(room["players"]) == 1 and not room_id.startswith("AI_"):
         player_color = room["current_turn"]
         
@@ -202,7 +203,6 @@ def click_square(room_id):
     
     player_color = "W" if room["players"].index(player_id) == 0 else "B"
     
-    # 🌟 バグ修正: 1台で交代プレイの時は、両方の駒を動かせる権限を与える
     if len(room["players"]) == 1 and not room_id.startswith("AI_"):
         player_color = room["current_turn"]
         

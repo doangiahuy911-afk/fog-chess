@@ -14,6 +14,14 @@
         .rules-content strong { color: #f1c40f; }
         .btn-rules { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
         .btn-rules:hover { background-color: #2980b9; }
+        
+        /* 🚨 警告アニメーション */
+        @keyframes alert-blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; color: #ffeb3b; }
+            100% { opacity: 1; }
+        }
+        .alert-text { color: #e74c3c; font-size: 0.85em; font-weight: bold; animation: alert-blink 1.5s infinite; display: inline-block; margin-top: 5px;}
     </style>
 </head>
 <body>
@@ -31,7 +39,7 @@
                 <li><strong>視界の霧:</strong> 自分の駒と、その正面1マスしか見えません。</li>
                 <li><strong>ソナー警告:</strong> 自分が動かせる範囲に敵の駒がいると「⚠️」が表示されます。</li>
                 <li><strong>相手の行動:</strong> 相手が駒を動かすと「相手が〇〇を動かしました」と通知が出ますが、どこを動かしたかは分かりません。</li>
-                <li><strong>タイムリミット:</strong> 5ターン（両者合わせて10手）経過すると、霧が晴れてお互いのキングの位置が常に公開されます。</li>
+                <li><strong>タイムリミット（新）:</strong> 5ターン周期（10手ごと）に1度だけ、霧が晴れてお互いのキングの位置が公開されます。次のターンには再び隠れます。</li>
             </ul>
             <div style="text-align: center; margin-top: 20px;">
                 <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c;">ゲームに戻る</button>
@@ -133,12 +141,15 @@
                     turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">🔍 相手は 【 ${pieceNames[pType]} 】 を動かしました！</span>`;
                 }
 
-                if (data.turn_count >= 10) {
-                    turnText += ` <br><span style="color: #e74c3c; font-size: 0.8em;">⚠️ 5ターン経過：お互いのキング位置が公開されています！</span>`;
+                // 🔄 周期的なキング公開システム
+                let currentRound = Math.floor(data.turn_count / 2);
+                if (currentRound > 0 && currentRound % 5 === 0) {
+                    turnText += ` <br><span class="alert-text">⚠️ 索敵完了：お互いのキングが丸見えです！（次ターンで再び隠れます）</span>`;
                 } else {
-                    let turnsLeft = Math.ceil((10 - data.turn_count) / 2);
+                    let turnsLeft = 5 - (currentRound % 5);
                     turnText += ` <br><span style="color: #f39c12; font-size: 0.8em;">キング公開まで あと ${turnsLeft} ターン</span>`;
                 }
+                
                 document.getElementById('turn-display').innerHTML = turnText;
             }
 
@@ -190,10 +201,13 @@
                         square.innerText = icons[cell] || '';
                     }
                     
+                    // 💡 ハイライト消失バグの修正：JavaScriptから直接CSS（緑の光）を当てる
                     const isMovable = data.valid_moves.some(move => move[0] === r && move[1] === c);
                     if (isMovable) {
                         square.classList.remove('fog-square');
-                        square.classList.add('highlight-square');
+                        square.style.backgroundColor = 'rgba(46, 204, 113, 0.4)'; 
+                        square.style.boxShadow = 'inset 0 0 10px #2ecc71';
+                        square.style.cursor = 'pointer';
                     }
 
                     if (data.selected && data.selected[0] === r && data.selected[1] === c) {
