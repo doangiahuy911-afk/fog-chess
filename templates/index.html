@@ -128,9 +128,8 @@
             } else {
                 let turnText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターンです`;
                 
-                // 👣 相手が何を動かしたかを文字で表示する
                 if (data.last_moved_piece) {
-                    const pType = data.last_moved_piece[1]; // 例: "WP" なら "P" を取得
+                    const pType = data.last_moved_piece[1]; 
                     turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">🔍 相手は 【 ${pieceNames[pType]} 】 を動かしました！</span>`;
                 }
 
@@ -196,8 +195,6 @@
                         square.classList.remove('fog-square');
                         square.classList.add('highlight-square');
                     }
-                    
-                    // ※黄色く光らせる機能を完全に削除しました
 
                     if (data.selected && data.selected[0] === r && data.selected[1] === c) {
                         square.style.border = '3px solid #e74c3c';

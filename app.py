@@ -33,7 +33,7 @@ def get_or_create_room(room_id):
             "switching_turn": False,
             "players": [],
             "turn_count": 0,
-            "last_moved_piece": None # 👣 変更：動いた場所ではなく「駒の種類」を記憶
+            "last_moved_piece": None
         }
     return game_rooms[room_id]
 
@@ -181,7 +181,7 @@ def get_game(room_id):
         "player_color": player_color,
         "player_count": len(room["players"]),
         "turn_count": room["turn_count"],
-        "last_moved_piece": room["last_moved_piece"] # 👣 変更：動いた駒の種類を画面へ送る
+        "last_moved_piece": room["last_moved_piece"]
     })
 
 @app.route('/click_square/<room_id>', methods=['POST'])
@@ -230,7 +230,6 @@ def click_square(room_id):
         room["current_turn"] = "B" if turn == "W" else "W"
         room["switching_turn"] = True 
         
-        # 👣 記録追加：動いた駒の種類（例："WP" や "BN"）を記録
         room["last_moved_piece"] = moving_piece
         room["turn_count"] += 1
         
@@ -280,7 +279,6 @@ def ai_move(room_id):
     room["current_turn"] = "W"
     room["switching_turn"] = False
     
-    # 👣 AI側の記録追加
     room["last_moved_piece"] = moving_piece
     room["turn_count"] += 1
     
