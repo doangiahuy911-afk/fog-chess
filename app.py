@@ -165,12 +165,19 @@ def get_game(room_id):
     data = request.json
     player_id = data.get('player_id')
     player_color = "spectator"
+    
     if player_id in room["players"]:
         player_color = "W" if room["players"].index(player_id) == 0 else "B"
+    
+    # 🌟 バグ修正: 1台で交代プレイ（ローカル）の時は、常に今のターンの陣営に視点を切り替える！
+    if len(room["players"]) == 1 and not room_id.startswith("AI_"):
+        player_color = room["current_turn"]
+        
     valid_moves = []
     if room["selected_pos"] and room["current_turn"] == player_color and not room["switching_turn"]:
         sr, sc = room["selected_pos"]
         valid_moves = get_valid_moves(room_id, sr, sc)
+        
     return jsonify({
         "visible_board": get_visible_board(room_id, player_color),
         "current_turn": room["current_turn"],
@@ -192,7 +199,13 @@ def click_square(room_id):
     r, c = data['r'], data['c']
     
     if player_id not in room["players"]: return jsonify({"status": "not_a_player"})
+    
     player_color = "W" if room["players"].index(player_id) == 0 else "B"
+    
+    # 🌟 バグ修正: 1台で交代プレイの時は、両方の駒を動かせる権限を与える
+    if len(room["players"]) == 1 and not room_id.startswith("AI_"):
+        player_color = room["current_turn"]
+        
     if room["current_turn"] != player_color: return jsonify({"status": "not_your_turn"})
     if len(room["players"]) <= 1 and room["switching_turn"]: return jsonify({"status": "waiting_ready"})
     if room["winner"]: return jsonify({"status": "game_over"})
