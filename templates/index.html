@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>暗殺霧チェス WEB</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <h1>🌫️ 暗殺霧チェス WEB ⚔️</h1>
+    <h2 id="turn-display">読み込み中...</h2>
+
+    <div id="switch-screen" class="switch-overlay" style="display: none;">
+        <div class="switch-box">
+            <h2 id="next-player-text" style="color: #fff;"></h2>
+            <p>相手に画面が見えないように席を交代してください。</p>
+            <button class="ready-btn" onclick="confirmReady()">準備完了！盤面を表示する</button>
+        </div>
+    </div>
+
+    <div id="chess-container"></div>
+
+    <div class="controls">
+        <button onclick="resetGame()">ゲームをリセット</button>
+    </div>
+
+    <script>
+        async function updateBoard() {
+            const response = await fetch('/get_game');
+            const data = await response.json();
+            
+            const container = document.getElementById('chess-container');
+            const switchScreen = document.getElementById('switch-screen');
+            const nextPlayerText = document.getElementById('next-player-text');
+            
+            container.innerHTML = '';
+            
+            // 1. 勝敗がついているかのチェック
+            if (data.winner) {
+                document.getElementById('turn-display').innerText = `🎉 勝負あり！ ${data.winner} の勝ちです！ 🎉`;
+                switchScreen.style.display = 'none';
+            } else {
+                document.getElementById('turn-display').innerText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターンです`;
+            }
+
+            // 2. 【新機能】プレイヤー交代中かどうかの判定
+            if (data.switching_turn && !data.winner) {
+                nextPlayerText.innerText = `次は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 の番です`;
+                switchScreen.style.display = 'flex'; // 交代画面をドカンと表示
+            } else {
+                switchScreen.style.display = 'none'; // 通常時は隠す
+            }
+
+            // チェス盤のマス目を生成
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    
+                    // 白黒の反転バグ修正適用済み
+                    if ((r + c) % 2 === 1) {
+                        square.classList.add('light-square');
+                    } else {
+                        square.classList.add('dark-square');
+                    }
+                    
+                    const cell = data.visible_board[r][c];
+                    
+                    if (cell === 'fog') {
+                        square.classList.add('fog-square');
+                    } else if (cell === 'sonar') {
+                        square.classList.add('sonar-square');
+                        square.innerText = '⚠️';
+                    } else if (cell !== 'empty') {
+                        const icons = {
+                            "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
+                            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚"
+                        };
+                        square.innerText = icons[cell] || '';
+                    }
+                    
+                    const isMovable = data.valid_moves.some(move => move[0] === r && move[1] === c);
+                    if (isMovable) {
+                        square.classList.remove('fog-square');
+                        square.classList.add('highlight-square');
+                    }
+                    
+                    if (data.selected && data.selected[0] === r && data.selected[1] === c) {
+                        square.style.border = '3px solid #e74c3c';
+                        square.style.boxSizing = 'border-box';
+                    }
+
+                    square.onclick = () => clickSquare(r, c);
+                    container.appendChild(square);
+                }
+            }
+        }
+
+        async function clickSquare(r, c) {
+            await fetch('/click_square', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ r, c })
+            });
+            updateBoard();
+        }
+
+        // 🤝 「準備完了」ボタンを押したときの処理
+        async function confirmReady() {
+            await fetch('/ready_next_turn', { method: 'POST' });
+            updateBoard();
+        }
+
+        async function resetGame() {
+            await fetch('/reset', { method: 'POST' });
+            updateBoard();
+        }
+
+        updateBoard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+body {
+    background-color: #2c3e50;
+    color: #ffffff;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    text-align: center;
+    padding: 20px;
+}
+
+h1 { color: #ecf0f1; margin-bottom: 5px; }
+h2 { color: #f1c40f; margin-bottom: 30px; }
+
+#chess-container {
+    display: grid;
+    grid-template-columns: repeat(8, 60px);
+    grid-template-rows: repeat(8, 60px);
+    gap: 2px;
+    width: 496px;
+    margin: 0 auto;
+    background-color: #34495e;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+.square {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.light-square { background-color: #e0e4e8; color: #333; }
+.dark-square { background-color: #a0aab5; color: #333; }
+
+/* 🟦 進めるマスのハイライト（さわやかな青） */
+.highlight-square {
+    background-color: #3498db !important;
+    cursor: pointer;
+}
+
+.fog-square {
+    background-color: #7f8c8d !important;
+    color: #7f8c8d;
+    cursor: not-allowed;
+}
+
+.sonar-square {
+    background-color: #e74c3c !important;
+    color: #ffffff !important;
+}
+
+.controls button {
+    margin-top: 30px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #e67e22;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.controls button:hover { background-color: #d35400; }
+
+
+
+/* 👥 プレイヤー交代用の暗転レイアウト */
+.switch-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(22, 160, 133, 0.95); /* 高級感のある深い緑で画面全体を覆う */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* チェス盤より絶対に上に表示 */
+}
+
+.switch-box {
+    background-color: #34495e;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    text-align: center;
+}
+
+.ready-btn {
+    margin-top: 25px;
+    padding: 15px 30px;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: #2ecc71; /* 鮮やかな緑のボタン */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: background-color 0.2s;
+}
+
+.ready-btn:hover {
+    background-color: #27ae60;
+}
