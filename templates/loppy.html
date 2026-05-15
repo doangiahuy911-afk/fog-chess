@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>暗殺霧チェス - ロビー</title>
+    <style>
+        body { background-color: #2c3e50; color: white; font-family: sans-serif; text-align: center; padding-top: 80px; }
+        .box { background-color: #34495e; padding: 40px; display: inline-block; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); width: 350px; }
+        input { padding: 12px; font-size: 18px; border-radius: 5px; border: none; width: 80%; text-align: center; margin-bottom: 15px; }
+        button { padding: 12px 24px; font-size: 18px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 85%; margin-top: 5px;}
+        .btn-create { background-color: #e67e22; }
+        .btn-create:hover { background-color: #d35400; }
+        .btn-join { background-color: #2ecc71; }
+        .btn-join:hover { background-color: #27ae60; }
+        hr { border: 0; height: 1px; background: #5d6d7e; margin: 25px 0; }
+    </style>
+</head>
+<body>
+    <h1>🌫️ 暗殺霧チェス ロビー ⚔️</h1>
+    <div class="box">
+        <h3>🔑 新しく部屋を作る</h3>
+        <p style="color: #bdc3c7; font-size: 13px;">自動生成された10桁のパスワードです</p>
+        <input type="text" id="generated-id" value="{{ suggested_id }}" readonly style="background-color: #2c3e50; color: #f1c40f; font-weight: bold;">
+        <button class="btn-create" onclick="createRoom()">このパスワードで部屋を作る</button>
+
+        <hr>
+
+        <h3>🚪 既存の部屋に入る</h3>
+        <p style="color: #bdc3c7; font-size: 13px;">友達から教えてもらったパスワードを入力</p>
+        <input type="text" id="room-input" placeholder="ここに10桁のパスワードを入力" onkeydown="if(event.key==='Enter')joinRoom()">
+        <button class="btn-join" onclick="joinRoom()">部屋に合流する</button>
+    </div>
+
+    <script>
+        function createRoom() {
+            const roomId = document.getElementById('generated-id').value;
+            location.href = '/room/' + encodeURIComponent(roomId);
+        }
+
+        function joinRoom() {
+            const roomId = document.getElementById('room-input').value.trim();
+            if (roomId) {
+                location.href = '/room/' + encodeURIComponent(roomId);
+            } else {
+                alert('パスワードを入力してください！');
+            }
+        }
+    </script>
+</body>
+</html>

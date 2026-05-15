@@ -2,13 +2,22 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>暗殺霧チェス WEB</title>
+    <title>暗殺霧チェス - 部屋: {{ room_id }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-    <h1>🌫️ 暗殺霧チェス WEB ⚔️</h1>
+    <h1>🌫️ 暗殺霧チェス オンライン ⚔️</h1>
+    <p style="color: #bdc3c7;">対戦ルームのパスワード: <strong style="color: #f1c40f; font-size: 20px;">{{ room_id }}</strong></p>
+    <p id="role-display" style="color: #2ecc71; font-weight: bold;">あなたは: 判定中...</p>
     <h2 id="turn-display">読み込み中...</h2>
+
+    <div id="online-overlay" class="switch-overlay" style="display: none;">
+        <div class="switch-box">
+            <h2 id="overlay-title" style="color: #fff;">お待ちください</h2>
+            <p id="overlay-desc">相手が作戦を練っています...</p>
+        </div>
+    </div>
 
     <div id="switch-screen" class="switch-overlay" style="display: none;">
         <div class="switch-box">
@@ -22,50 +31,100 @@
 
     <div class="controls">
         <button onclick="resetGame()">ゲームをリセット</button>
+        <br><br>
+        <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d;">部屋を出てロビーに戻る</button>
     </div>
 
     <script>
+        const roomId = "{{ room_id }}";
+        
+        // 🆔 あなたのデバイス専用のランダムIDをブラウザに記憶させる
+        if (!localStorage.getItem('chess_player_id')) {
+            localStorage.setItem('chess_player_id', 'p_' + Math.random().toString(36).substr(2, 9));
+        }
+        const playerId = localStorage.getItem('chess_player_id');
+        let myColor = null;
+
+        // 🚪 部屋への参加申請
+        async function joinRoom() {
+            const response = await fetch(`/join_room_backend/${roomId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ player_id: playerId })
+            });
+            const data = await response.json();
+            if (data.status === 'full') {
+                document.getElementById('overlay-title').innerText = "満員です";
+                document.getElementById('overlay-desc').innerText = "この部屋はすでに2人のプレイヤーで対戦中です。";
+                document.getElementById('online-overlay').style.display = 'flex';
+                return false;
+            }
+            myColor = data.color;
+            document.getElementById('role-display').innerText = `あなたは 【 ${myColor === 'W' ? '白（先攻）' : '黒（後攻）'} 】 陣営です`;
+            return true;
+        }
+
         async function updateBoard() {
-            const response = await fetch('/get_game');
+            const response = await fetch(`/get_game/${roomId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ player_id: playerId })
+            });
             const data = await response.json();
             
             const container = document.getElementById('chess-container');
             const switchScreen = document.getElementById('switch-screen');
-            const nextPlayerText = document.getElementById('next-player-text');
+            const onlineOverlay = document.getElementById('online-overlay');
             
             container.innerHTML = '';
             
-            // 1. 勝敗がついているかのチェック
+            // 勝敗表示
             if (data.winner) {
                 document.getElementById('turn-display').innerText = `🎉 勝負あり！ ${data.winner} の勝ちです！ 🎉`;
                 switchScreen.style.display = 'none';
+                onlineOverlay.style.display = 'none';
             } else {
                 document.getElementById('turn-display').innerText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターンです`;
             }
 
-            // 2. 【新機能】プレイヤー交代中かどうかの判定
-            if (data.switching_turn && !data.winner) {
-                nextPlayerText.innerText = `次は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 の番です`;
-                switchScreen.style.display = 'flex'; // 交代画面をドカンと表示
+            if (data.winner) { drawBoard(data); return; }
+
+            // 🛠️ 画面ロック・目隠しの条件分岐
+            if (data.player_count === 1) {
+                // 【1人しかいないとき】従来通りのローカル目隠し機能
+                onlineOverlay.style.display = 'none';
+                if (data.switching_turn) {
+                    document.getElementById('next-player-text').innerText = `次は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 の番です`;
+                    switchScreen.style.display = 'flex';
+                } else {
+                    switchScreen.style.display = 'none';
+                }
             } else {
-                switchScreen.style.display = 'none'; // 通常時は隠す
+                // 【2人そろっているとき】オンライン専用ロック機能
+                switchScreen.style.display = 'none';
+                if (data.current_turn !== myColor) {
+                    document.getElementById('overlay-title').innerText = "相手のターンです";
+                    document.getElementById('overlay-desc').innerText = "少々お待ちください。相手が作戦を練っています...";
+                    onlineOverlay.style.display = 'flex';
+                } else {
+                    onlineOverlay.style.display = 'none';
+                }
             }
 
-            // チェス盤のマス目を生成
+            drawBoard(data);
+        }
+
+        function drawBoard(data) {
+            const container = document.getElementById('chess-container');
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const square = document.createElement('div');
                     square.classList.add('square');
                     
-                    // 白黒の反転バグ修正適用済み
-                    if ((r + c) % 2 === 1) {
-                        square.classList.add('light-square');
-                    } else {
-                        square.classList.add('dark-square');
-                    }
+                    if ((r + c) % 2 === 1) { square.classList.add('light-square'); } 
+                    else { square.classList.add('dark-square'); }
                     
                     const cell = data.visible_board[r][c];
-                    
                     if (cell === 'fog') {
                         square.classList.add('fog-square');
                     } else if (cell === 'sonar') {
@@ -97,26 +156,41 @@
         }
 
         async function clickSquare(r, c) {
-            await fetch('/click_square', {
+            await fetch(`/click_square/${roomId}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ r, c })
+                body: JSON.stringify({ r, c, player_id: playerId })
             });
             updateBoard();
         }
 
-        // 🤝 「準備完了」ボタンを押したときの処理
         async function confirmReady() {
-            await fetch('/ready_next_turn', { method: 'POST' });
+            await fetch(`/ready_next_turn/${roomId}`, { method: 'POST' });
             updateBoard();
         }
 
         async function resetGame() {
-            await fetch('/reset', { method: 'POST' });
+            await fetch(`/reset/${roomId}`, { method: 'POST' });
             updateBoard();
         }
 
-        updateBoard();
+        async function leaveAndGoLobby() {
+            await fetch(`/leave_room/${roomId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ player_id: playerId })
+            });
+            location.href = '/';
+        }
+
+        // 初期化処理
+        joinRoom().then(success => {
+            if (success) {
+                // 1秒ごとに最新の状態をサーバーへ見に行く（リアルタイム同期）
+                setInterval(updateBoard, 1000);
+                updateBoard();
+            }
+        });
     </script>
 </body>
 </html>

@@ -1,4 +1,6 @@
 from flask import Flask, render_template, jsonify, request
+import random
+import string
 
 app = Flask(__name__)
 
@@ -14,19 +16,27 @@ def reset_board():
         ["WR", "WN", "WB", "WQ", "WK", "WB", "WN", "WR"]
     ]
 
-game_state = {
-    "board": reset_board(),
-    "current_turn": "W",
-    "selected_pos": None,
-    "winner": None,
-    "switching_turn": False  # 👥 プレイヤーが交代中かどうかのスイッチ！
-}
+# 🗄️ 部屋データ管理
+game_rooms = {}
 
-def get_valid_moves(r, c):
-    board = game_state["board"]
+def get_or_create_room(room_id):
+    if room_id not in game_rooms:
+        game_rooms[room_id] = {
+            "board": reset_board(),
+            "current_turn": "W",
+            "selected_pos": None,
+            "winner": None,
+            "switching_turn": False,
+            "players": []  # 👥 ここに接続中のプレイヤーセッションIDを記録 (最大2人)
+        }
+    return game_rooms[room_id]
+
+# ♟️ 移動ルール計算
+def get_valid_moves(room_id, r, c):
+    room = get_or_create_room(room_id)
+    board = room["board"]
     piece = board[r][c]
     if piece == "--": return []
-    
     color = piece[0]
     p_type = piece[1]
     moves = []
@@ -43,53 +53,49 @@ def get_valid_moves(r, c):
                 target = board[r + direction][c + dc]
                 if target != "--" and target[0] != color:
                     moves.append([r + direction, c + dc])
-
     elif p_type == "N":
         n_moves = [(-2,-1), (-2,1), (-1,-2), (-1,2), (1,-2), (1,2), (2,-1), (2,1)]
         for dr, dc in n_moves:
             nr, nc = r + dr, c + dc
             if 0 <= nr < 8 and 0 <= nc < 8:
-                if board[nr][nc] == "--" or board[nr][nc][0] != color:
-                    moves.append([nr, nc])
-
+                if board[nr][nc] == "--" or board[nr][nc][0] != color: moves.append([nr, nc])
     elif p_type == "K":
         for dr in [-1, 0, 1]:
             for dc in [-1, 0, 1]:
                 if dr == 0 and dc == 0: continue
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < 8 and 0 <= nc < 8:
-                    if board[nr][nc] == "--" or board[nr][nc][0] != color:
-                        moves.append([nr, nc])
+                    if board[nr][nc] == "--" or board[nr][nc][0] != color: moves.append([nr, nc])
     else:
         directions = []
         if p_type == "R": directions = [(-1,0), (1,0), (0,-1), (0,1)]
         elif p_type == "B": directions = [(-1,-1), (-1,1), (1,-1), (1,1)]
         elif p_type == "Q": directions = [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1), (1,-1), (1,1)]
-        
         for dr, dc in directions:
             nr, nc = r + dr, c + dc
             while 0 <= nr < 8 and 0 <= nc < 8:
                 target = board[nr][nc]
-                if target == "--":
-                    moves.append([nr, nc])
+                if target == "--": moves.append([nr, nc])
                 elif target[0] != color:
                     moves.append([nr, nc])
                     break
-                else:
-                    break
+                else: break
                 nr += dr
                 nc += dc
     return moves
 
-def get_visible_board():
-    # 👥 交代中なら、全てのマスを強制的に「完全な闇（fog）」にして何も見せなくする！
-    if game_state["switching_turn"]:
+def get_visible_board(room_id, player_color):
+    room = get_or_create_room(room_id)
+    
+    # ☝️ 1人プレイ時のみ、ターン交代の目隠し画面を有効にする
+    if len(room["players"]) <= 1 and room["switching_turn"]:
         return [["fog" for _ in range(8)] for _ in range(8)]
 
-    board = game_state["board"]
-    turn = game_state["current_turn"]
-    visible = [["fog" for _ in range(8)] for _ in range(8)]
+    board = room["board"]
+    # 2人プレイ時は、自分の登録された色（player_color）の視界だけを常に計算する
+    turn = player_color if player_color in ["W", "B"] else room["current_turn"]
     
+    visible = [["fog" for _ in range(8)] for _ in range(8)]
     for r in range(8):
         for c in range(8):
             piece = board[r][c]
@@ -100,96 +106,145 @@ def get_visible_board():
                     front = board[r + direction][c]
                     visible[r + direction][c] = "empty" if front == "--" else front
 
-    if game_state["selected_pos"]:
-        sr, sc = game_state["selected_pos"]
-        valid_moves = get_valid_moves(sr, sc)
+    if room["selected_pos"] and room["current_turn"] == player_color:
+        sr, sc = room["selected_pos"]
+        valid_moves = get_valid_moves(room_id, sr, sc)
         for mr, mc in valid_moves:
             target = board[mr][mc]
             if target != "--" and not target.startswith(turn):
                 visible[mr][mc] = "sonar"
-                
     return visible
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def lobby():
+    # 🎰 10桁の英数字パスワードを自動生成してロビーに渡す
+    random_id = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+    return render_template('lobby.html', suggested_id=random_id)
 
-@app.route('/get_game')
-def get_game():
+@app.route('/room/<room_id>')
+def room(room_id):
+    return render_template('index.html', room_id=room_id)
+
+# 👥 部屋への入場・陣営決定API
+@app.route('/join_room_backend/<room_id>', methods=['POST'])
+def join_room_backend(room_id):
+    room = get_or_create_room(room_id)
+    data = request.json
+    player_id = data.get('player_id')
+    
+    # 既にいるプレイヤーならそのまま現在の色を返す
+    if player_id in room["players"]:
+        color = "W" if room["players"].index(player_id) == 0 else "B"
+        return jsonify({"status": "already_joined", "color": color})
+        
+    # 満員チェック（2人まで）
+    if len(room["players"]) >= 2:
+        return jsonify({"status": "full"})
+        
+    # 1人目は白(W)、2人目は黒(B)
+    room["players"].append(player_id)
+    color = "W" if len(room["players"]) == 1 else "B"
+    return jsonify({"status": "joined", "color": color})
+
+@app.route('/get_game/<room_id>', methods=['POST'])
+def get_game(room_id):
+    room = get_or_create_room(room_id)
+    data = request.json
+    player_id = data.get('player_id')
+    
+    # プレイヤーの色を特定
+    player_color = " spectator " # 3人目以降（基本弾かれるが念のため観戦）
+    if player_id in room["players"]:
+        player_color = "W" if room["players"].index(player_id) == 0 else "B"
+        
     valid_moves = []
-    if game_state["selected_pos"] and not game_state["switching_turn"]:
-        sr, sc = game_state["selected_pos"]
-        valid_moves = get_valid_moves(sr, sc)
+    if room["selected_pos"] and room["current_turn"] == player_color and not room["switching_turn"]:
+        sr, sc = room["selected_pos"]
+        valid_moves = get_valid_moves(room_id, sr, sc)
         
     return jsonify({
-        "visible_board": get_visible_board(),
-        "current_turn": game_state["current_turn"],
-        "selected": game_state["selected_pos"],
+        "visible_board": get_visible_board(room_id, player_color),
+        "current_turn": room["current_turn"],
+        "selected": room["selected_pos"],
         "valid_moves": valid_moves,
-        "winner": game_state["winner"],
-        "switching_turn": game_state["switching_turn"] # 🤖 状態をブラウザに送る
+        "winner": room["winner"],
+        "switching_turn": room["switching_turn"],
+        "player_color": player_color,
+        "player_count": len(room["players"])
     })
 
-@app.route('/click_square', methods=['POST'])
-def click_square():
-    # 交代中なら盤面のクリックは一切受け付けない
-    if game_state["switching_turn"]: return jsonify({"status": "waiting_ready"})
-    
+@app.route('/click_square/<room_id>', methods=['POST'])
+def click_square(room_id):
+    room = get_or_create_room(room_id)
     data = request.json
+    player_id = data['player_id']
     r, c = data['r'], data['c']
-    board = game_state["board"]
-    turn = game_state["current_turn"]
     
-    if game_state["winner"]: return jsonify({"status": "game_over"})
+    # 自分のターンでなければ操作不能
+    player_color = "W" if room["players"].index(player_id) == 0 else "B"
+    if room["current_turn"] != player_color: return jsonify({"status": "not_your_turn"})
+    if len(room["players"]) <= 1 and room["switching_turn"]: return jsonify({"status": "waiting_ready"})
+    if room["winner"]: return jsonify({"status": "game_over"})
 
-    if game_state["selected_pos"] is None:
+    board = room["board"]
+    turn = room["current_turn"]
+    
+    if room["selected_pos"] is None:
         if board[r][c].startswith(turn):
-            game_state["selected_pos"] = [r, c]
+            room["selected_pos"] = [r, c]
             return jsonify({"status": "selected"})
         return jsonify({"status": "invalid_selection"})
     else:
-        sr, sc = game_state["selected_pos"]
+        sr, sc = room["selected_pos"]
         if sr == r and sc == c:
-            game_state["selected_pos"] = None
+            room["selected_pos"] = None
             return jsonify({"status": "canceled"})
         elif board[r][c].startswith(turn):
-            game_state["selected_pos"] = [r, c]
+            room["selected_pos"] = [r, c]
             return jsonify({"status": "re_selected"})
             
-        valid_moves = get_valid_moves(sr, sc)
-        if [r, c] not in valid_moves:
-            return jsonify({"status": "invalid_move"})
+        valid_moves = get_valid_moves(room_id, sr, sc)
+        if [r, c] not in valid_moves: return jsonify({"status": "invalid_move"})
             
         target_piece = board[r][c]
         moving_piece = board[sr][sc]
-        
-        if target_piece in ["WK", "BK"]:
-            game_state["winner"] = "白" if turn == "W" else "黒"
+        if target_piece in ["WK", "BK"]: room["winner"] = "白" if turn == "W" else "黒"
             
         board[r][c] = moving_piece
         board[sr][sc] = "--"
-        
         if moving_piece == "WP" and r == 0: board[r][c] = "WQ"
         elif moving_piece == "BP" and r == 7: board[r][c] = "BQ"
         
-        game_state["selected_pos"] = None
-        
-        # 🔔 ここがポイント！ターンは切り替えるが、まずは「交代中モード」をONにする！
-        game_state["current_turn"] = "B" if turn == "W" else "W"
-        game_state["switching_turn"] = True 
+        room["selected_pos"] = None
+        room["current_turn"] = "B" if turn == "W" else "W"
+        room["switching_turn"] = True 
         return jsonify({"status": "moved"})
 
-# 🤝 次の人が準備できて、ボタンを押したときに呼ばれるAPI
-@app.route('/ready_next_turn', methods=['POST'])
-def ready_next_turn():
-    game_state["switching_turn"] = False # 交代モードを解除！
+@app.route('/ready_next_turn/<room_id>', methods=['POST'])
+def ready_next_turn(room_id):
+    room = get_or_create_room(room_id)
+    room["switching_turn"] = False
     return jsonify({"status": "ready"})
 
-@app.route('/reset', methods=['POST'])
-def reset():
-    global game_state
-    game_state = {"board": reset_board(), "current_turn": "W", "selected_pos": None, "winner": None, "switching_turn": False}
+@app.route('/reset/<room_id>', methods=['POST'])
+def reset(room_id):
+    if room_id in game_rooms:
+        players = game_rooms[room_id]["players"] # プレイヤーの接続は維持
+        game_rooms[room_id] = {
+            "board": reset_board(), "current_turn": "W", "selected_pos": None, "winner": None, "switching_turn": False, "players": players
+        }
     return jsonify({"status": "reset"})
+
+# 🚪 退室処理（簡易版：リロード時などにプレイヤー枠を空ける）
+@app.route('/leave_room/<room_id>', methods=['POST'])
+def leave_room(room_id):
+    data = request.json
+    player_id = data.get('player_id')
+    if room_id in game_rooms and player_id in game_rooms[room_id]["players"]:
+        game_rooms[room_id]["players"].remove(player_id)
+        if len(game_rooms[room_id]["players"]) == 0:
+            del game_rooms[room_id] # 誰もいなくなったら部屋消去
+    return jsonify({"status": "left"})
 
 if __name__ == '__main__':
     app.run(debug=True)
