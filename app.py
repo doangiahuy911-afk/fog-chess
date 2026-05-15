@@ -3,7 +3,6 @@ import random
 import string
 import os
 
-# 📂 フォルダ名が日本語になっていても、英語になっていてもうまく読み込めるようにする魔法の設定
 base_dir = os.path.abspath(os.path.dirname(__file__))
 template_dir = os.path.join(base_dir, 'templates')
 static_dir = os.path.join(base_dir, 'static')
@@ -116,9 +115,8 @@ def get_visible_board(room_id, player_color):
 @app.route('/')
 def lobby():
     random_id = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-    # 🔍 lobby.html が見つからないエラーを防ぐため、存在チェックを入れる
     if not os.path.exists(os.path.join(template_dir, 'lobby.html')):
-        return "<h3>エラー: templatesフォルダの中に lobby.html が見つかりません。配置を確認してください。</h3>"
+        return "<h3>エラー: templatesフォルダの中に lobby.html が見つかりません。</h3>"
     return render_template('lobby.html', suggested_id=random_id)
 
 @app.route('/room/<room_id>')
@@ -132,11 +130,20 @@ def join_room_backend(room_id):
     room = get_or_create_room(room_id)
     data = request.json
     player_id = data.get('player_id')
+    
     if player_id in room["players"]:
         color = "W" if room["players"].index(player_id) == 0 else "B"
         return jsonify({"status": "already_joined", "color": color})
+        
+    # 🤖 AI部屋の場合は特別処理
+    if room_id.startswith("AI_") and len(room["players"]) == 0:
+        room["players"].append(player_id) # 1人目はあなた(白)
+        room["players"].append("BOT_AI")  # 2人目はAI(黒)
+        return jsonify({"status": "joined", "color": "W"})
+
     if len(room["players"]) >= 2:
         return jsonify({"status": "full"})
+        
     room["players"].append(player_id)
     color = "W" if len(room["players"]) == 1 else "B"
     return jsonify({"status": "joined", "color": color})
@@ -203,6 +210,57 @@ def click_square(room_id):
         room["current_turn"] = "B" if turn == "W" else "W"
         room["switching_turn"] = True 
         return jsonify({"status": "moved"})
+
+# 🤖 接待AIの思考回路
+@app.route('/ai_move/<room_id>', methods=['POST'])
+def ai_move(room_id):
+    room = get_or_create_room(room_id)
+    if room["winner"] or room["current_turn"] != "B":
+        return jsonify({"status": "not_ai_turn"})
+
+    board = room["board"]
+    possible_moves = []
+    
+    for r in range(8):
+        for c in range(8):
+            if board[r][c].startswith("B"):
+                moves = get_valid_moves(room_id, r, c)
+                for mr, mc in moves:
+                    target = board[mr][mc]
+                    score = random.randint(0, 5) # 揺らぎ
+                    
+                    if target != "--" and target.startswith("W"):
+                        score += 20 # 攻撃
+                        if target == "WK": 
+                            score = -1000 # キングは接待して取らない
+                            
+                    if random.random() < 0.2:
+                        score -= 15 # 20%でわざと手を抜く
+                        
+                    possible_moves.append((score, r, c, mr, mc))
+
+    if not possible_moves: return jsonify({"status": "no_moves"})
+
+    valid_moves = [m for m in possible_moves if m[0] > -500]
+    if not valid_moves: valid_moves = possible_moves
+
+    valid_moves.sort(reverse=True, key=lambda x: x[0])
+    top_moves = valid_moves[:min(3, len(valid_moves))] 
+    chosen = random.choice(top_moves)
+
+    score, sr, sc, tr, tc = chosen
+
+    target_piece = board[tr][tc]
+    moving_piece = board[sr][sc]
+    if target_piece == "WK": room["winner"] = "黒（AI）"
+        
+    board[tr][tc] = moving_piece
+    board[sr][sc] = "--"
+    if moving_piece == "BP" and tr == 7: board[tr][tc] = "BQ"
+
+    room["current_turn"] = "W"
+    room["switching_turn"] = False
+    return jsonify({"status": "moved"})
 
 @app.route('/ready_next_turn/<room_id>', methods=['POST'])
 def ready_next_turn(room_id):

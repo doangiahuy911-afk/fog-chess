@@ -38,14 +38,12 @@
     <script>
         const roomId = "{{ room_id }}";
         
-        // 🆔 あなたのデバイス専用のランダムIDをブラウザに記憶させる
         if (!localStorage.getItem('chess_player_id')) {
             localStorage.setItem('chess_player_id', 'p_' + Math.random().toString(36).substr(2, 9));
         }
         const playerId = localStorage.getItem('chess_player_id');
         let myColor = null;
 
-        // 🚪 部屋への参加申請
         async function joinRoom() {
             const response = await fetch(`/join_room_backend/${roomId}`, {
                 method: 'POST',
@@ -60,7 +58,11 @@
                 return false;
             }
             myColor = data.color;
-            document.getElementById('role-display').innerText = `あなたは 【 ${myColor === 'W' ? '白（先攻）' : '黒（後攻）'} 】 陣営です`;
+            let roleText = `あなたは 【 ${myColor === 'W' ? '白（先攻）' : '黒（後攻）'} 】 陣営です`;
+            if (roomId.startsWith('AI_')) {
+                roleText = "あなたは 【 白 】 陣営です (vs 接待AI)";
+            }
+            document.getElementById('role-display').innerText = roleText;
             return true;
         }
 
@@ -72,13 +74,19 @@
             });
             const data = await response.json();
             
+            // 🤖 AIの自動ターン実行
+            if (roomId.startsWith('AI_') && data.current_turn === 'B' && !data.winner) {
+                await fetch(`/ai_move/${roomId}`, { method: 'POST' });
+                setTimeout(updateBoard, 500);
+                return;
+            }
+
             const container = document.getElementById('chess-container');
             const switchScreen = document.getElementById('switch-screen');
             const onlineOverlay = document.getElementById('online-overlay');
             
             container.innerHTML = '';
             
-            // 勝敗表示
             if (data.winner) {
                 document.getElementById('turn-display').innerText = `🎉 勝負あり！ ${data.winner} の勝ちです！ 🎉`;
                 switchScreen.style.display = 'none';
@@ -89,9 +97,7 @@
 
             if (data.winner) { drawBoard(data); return; }
 
-            // 🛠️ 画面ロック・目隠しの条件分岐
-            if (data.player_count === 1) {
-                // 【1人しかいないとき】従来通りのローカル目隠し機能
+            if (data.player_count === 1 && !roomId.startsWith('AI_')) {
                 onlineOverlay.style.display = 'none';
                 if (data.switching_turn) {
                     document.getElementById('next-player-text').innerText = `次は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 の番です`;
@@ -100,9 +106,8 @@
                     switchScreen.style.display = 'none';
                 }
             } else {
-                // 【2人そろっているとき】オンライン専用ロック機能
                 switchScreen.style.display = 'none';
-                if (data.current_turn !== myColor) {
+                if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
                     document.getElementById('overlay-title').innerText = "相手のターンです";
                     document.getElementById('overlay-desc').innerText = "少々お待ちください。相手が作戦を練っています...";
                     onlineOverlay.style.display = 'flex';
@@ -183,10 +188,8 @@
             location.href = '/';
         }
 
-        // 初期化処理
         joinRoom().then(success => {
             if (success) {
-                // 1秒ごとに最新の状態をサーバーへ見に行く（リアルタイム同期）
                 setInterval(updateBoard, 1000);
                 updateBoard();
             }
