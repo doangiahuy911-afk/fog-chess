@@ -13,6 +13,18 @@
         .turn-box { background: #233140; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #f1c40f; }
         @keyframes check-blink { 0% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } 50% { transform: scale(1.05); opacity: 0.8; text-shadow: 0 0 20px #ff0000; } 100% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } }
         .check-warning { color: #ff4757; font-size: 16px; font-weight: bold; display: inline-block; margin-top: 10px; animation: check-blink 0.8s infinite; border: 2px solid #ff4757; padding: 5px 10px; border-radius: 5px; background-color: rgba(255, 71, 87, 0.1); }
+        
+        /* 🌟 特殊演出用の追加アニメーション（虹色に輝く覇者エフェクト） */
+        @keyframes rainbow-glow {
+            0% { text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000; }
+            33% { text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00; }
+            66% { text-shadow: 0 0 20px #0000ff, 0 0 40px #0000ff; }
+            100% { text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000; }
+        }
+        .result-domination {
+            color: #fff;
+            animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, rainbow-glow 3s infinite linear;
+        }
     </style>
 </head>
 <body>
@@ -54,7 +66,7 @@
             <div id="chess-container"></div>
             <div id="result-overlay" style="display: none;">
                 <div id="result-message" class="result-text"></div>
-                <div class="result-desc">タップして盤面の答え合わせをする</div>
+                <div id="result-sub-desc" class="result-desc">タップして盤面の答え合わせをする</div>
             </div>
         </div>
 
@@ -106,7 +118,20 @@
 
         const pieceNames = { "P": "ポーン ♟", "R": "ルーク ♜", "N": "ナイト ♞", "B": "ビショップ ♝", "Q": "クイーン ♛", "K": "キング ♚" };
         const icons = { "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
-                            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚"};
+                            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚" };
+
+        // 盤面の駒の数をフロント側でも数えるための関数
+        function countPiecesOnBoard(visibleBoard) {
+            let count = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (visibleBoard[r][c] !== 'fog' && visibleBoard[r][c] !== 'empty' && visibleBoard[r][c] !== 'sonar') {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
 
         async function joinRoom() {
             const response = await fetch(`/join_room_backend/${roomId}`, {
@@ -121,7 +146,6 @@
             }
             myColor = data.color;
             
-            // 🌟 プレイヤーの役割表示に「AIのレベル」を反映させる
             let roleText = `【 ${myColor === 'W' ? '白（先攻）' : '黒（後攻）'} 】 陣営`;
             if (roomId.startsWith('AI_1_')) roleText = "【 白 】 陣営 (vs AI Lv.1: 接待)";
             else if (roomId.startsWith('AI_2_')) roleText = "【 白 】 陣営 (vs AI Lv.2: 通常)";
@@ -148,23 +172,46 @@
             const onlineOverlay = document.getElementById('online-overlay');
             const resultOverlay = document.getElementById('result-overlay');
             const resultMessage = document.getElementById('result-message');
+            const resultSubDesc = document.getElementById('result-sub-desc');
             
             container.innerHTML = '';
             
             if (data.winner) {
-                document.getElementById('turn-display').innerHTML = `🎉 決着がつきました！<br>勝者: ${data.winner}`;
+                document.getElementById('turn-display').innerHTML = `🎉 決着がつきました！<br>結果: ${data.winner}`;
                 switchScreen.style.display = 'none'; 
                 onlineOverlay.style.display = 'none';
 
                 let myTeamName = myColor === 'W' ? '白' : '黒';
                 if (roomId.startsWith('AI_')) myTeamName = '白';
 
-                if (data.winner === myTeamName) {
-                    resultMessage.innerHTML = "👑<br>YOU WIN!";
-                    resultMessage.className = "result-text result-win";
+                // 🤝 引き分け判定の処理
+                if (data.winner.includes("引き分け")) {
+                    resultMessage.innerHTML = "🤝<br>DRAW";
+                    resultMessage.className = "result-text result-win"; 
+                    resultSubDesc.innerText = "お互いに手詰まり、または戦力不足です。";
+                } 
+                // 👑 勝利・敗北の判定処理
+                else if (data.winner.includes(myTeamName)) {
+                    // 🌟 演出の分岐：サドンデス（80ターン以上 or 駒10個以下）だったかどうか
+                    let totalPieces = data.captured_by_W.length + data.captured_by_B.length;
+                    let isSuddenDeathWin = (data.turn_count >= 80 || (32 - totalPieces) <= 10);
+
+                    if (isSuddenDeathWin) {
+                        // 🔴 霧が晴れてからの勝利演出
+                        resultMessage.innerHTML = "⚔️🔥<br>DOMINATION!";
+                        resultMessage.className = "result-text result-domination";
+                        resultSubDesc.innerText = "サドンデスの死闘を制し、完全なる覇者となった！";
+                    } else {
+                        // 🟢 霧の中（通常時）での勝利演出
+                        resultMessage.innerHTML = "🎭👥<br>SILENT ASSASSIN";
+                        resultMessage.className = "result-text result-win";
+                        resultSubDesc.innerText = "暗闇からの完璧なる奇襲。姿なき暗殺成功！";
+                    }
                 } else {
+                    // 💀 敗北演出
                     resultMessage.innerHTML = "💀<br>YOU LOSE...";
                     resultMessage.className = "result-text result-lose";
+                    resultSubDesc.innerText = "暗闇の中に消え去った...。もう一度挑戦しよう！";
                 }
                 
                 if (resultOverlay.style.display === 'none' && !resultOverlay.dataset.shown) {
@@ -175,6 +222,7 @@
             } else {
                 resultOverlay.style.display = 'none';
                 resultOverlay.dataset.shown = ""; 
+                resultSubDesc.innerText = "タップして盤面の答え合わせをする"; // 元に戻す
 
                 let turnText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターン`;
                 if (data.last_moved_piece) {
