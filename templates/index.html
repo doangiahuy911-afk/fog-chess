@@ -6,58 +6,41 @@
     <title>暗殺霧チェス - 部屋: {{ room_id }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .rules-content { text-align: left; max-height: 60vh; overflow-y: auto; color: #ecf0f1; }
+        .rules-content { text-align: left; max-height: 60vh; overflow-y: auto; color: var(--text-color); }
         .rules-content li { margin-bottom: 12px; }
         .alert-text { color: #e74c3c; font-weight: bold; animation: alert-blink 1.5s infinite; }
         @keyframes alert-blink { 0% { opacity: 1; } 50% { opacity: 0.5; color: #ffeb3b; } 100% { opacity: 1; } }
-        .turn-box { background: #233140; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #f1c40f; }
+        .turn-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #f1c40f; }
         @keyframes check-blink { 0% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } 50% { transform: scale(1.05); opacity: 0.8; text-shadow: 0 0 20px #ff0000; } 100% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } }
         .check-warning { color: #ff4757; font-size: 16px; font-weight: bold; display: inline-block; margin-top: 10px; animation: check-blink 0.8s infinite; border: 2px solid #ff4757; padding: 5px 10px; border-radius: 5px; background-color: rgba(255, 71, 87, 0.1); }
-        
-        /* 🌟 特殊演出用の追加アニメーション（虹色に輝く覇者エフェクト） */
-        @keyframes rainbow-glow {
-            0% { text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000; }
-            33% { text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00; }
-            66% { text-shadow: 0 0 20px #0000ff, 0 0 40px #0000ff; }
-            100% { text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000; }
-        }
-        .result-domination {
-            color: #fff;
-            animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, rainbow-glow 3s infinite linear;
-        }
+        /* 待機中の表示をオーバーレイからテキストに変更 */
+        .waiting-text { color: #bdc3c7; font-size: 14px; font-weight: normal; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
 
     <div id="rules-modal" class="switch-overlay" style="display: none;">
         <div class="switch-box" style="padding: 20px;">
-            <h3 style="color: #f1c40f; margin-top: 0;">📜 ルール</h3>
+            <h3 style="color: #f1c40f; margin-top: 0;" data-i18n="rule_title">📜 ルール</h3>
             <div class="rules-content">
                 <ul style="padding-left: 20px; font-size: 14px; line-height: 1.5;">
-                    <li><strong>勝利条件:</strong> 相手のキングを取る。</li>
-                    <li><strong>視界の霧:</strong> 自分の駒とその正面1マスのみ見える。</li>
-                    <li><strong>ソナー:</strong> 動かせる範囲に敵がいると「⚠️」表示。</li>
-                    <li><strong>通知:</strong> 相手が何を動かしたか通知される（場所は非公開）。</li>
-                    <li><strong>タイムリミット:</strong> 5ターンごとにキングが公開される。</li>
-                    <li><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分にだけ警告が出ます。</li>
+                    <li data-i18n="rule_1"><strong>勝利条件:</strong> 相手のキングを取る。</li>
+                    <li data-i18n="rule_2"><strong>視界の霧:</strong> 自分の駒とその正面1マスのみ見える。</li>
+                    <li data-i18n="rule_3"><strong>ソナー:</strong> 動かせる範囲に敵がいると「⚠️」表示。</li>
+                    <li data-i18n="rule_4"><strong>通知:</strong> 相手が何を動かしたか通知される（場所は非公開）。</li>
+                    <li data-i18n="rule_5"><strong>タイムリミット:</strong> 5ターンごとにキングが公開される。</li>
+                    <li data-i18n="rule_6"><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分にだけ警告が出ます。</li>
                 </ul>
             </div>
-            <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin-top: 15px;">ゲームに戻る</button>
-        </div>
-    </div>
-
-    <div id="online-overlay" class="switch-overlay" style="display: none;">
-        <div class="switch-box">
-            <h3 id="overlay-title" style="color: #fff;">お待ちください</h3>
-            <p id="overlay-desc" style="font-size: 14px; color: #bdc3c7;">相手が作戦を練っています...</p>
+            <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin-top: 15px;" data-i18n="btn_close">ゲームに戻る</button>
         </div>
     </div>
 
     <div id="switch-screen" class="switch-overlay" style="display: none;">
         <div class="switch-box">
-            <h3 id="next-player-text" style="color: #fff;"></h3>
-            <p style="font-size: 14px; color: #bdc3c7;">相手に画面が見えないように席を交代してください。</p>
-            <button class="ready-btn" onclick="confirmReady()">準備完了！</button>
+            <h3 id="next-player-text" style="color: var(--text-color);"></h3>
+            <p style="font-size: 14px; color: var(--text-color); opacity: 0.8;" data-i18n="switch_desc">相手に画面が見えないように席を交代してください。</p>
+            <button class="ready-btn" onclick="confirmReady()" data-i18n="btn_ready">準備完了！</button>
         </div>
     </div>
 
@@ -66,36 +49,41 @@
             <div id="chess-container"></div>
             <div id="result-overlay" style="display: none;">
                 <div id="result-message" class="result-text"></div>
-                <div id="result-sub-desc" class="result-desc">タップして盤面の答え合わせをする</div>
+                <div id="result-sub-desc" class="result-desc" data-i18n="tap_to_reveal">タップして盤面の答え合わせをする</div>
             </div>
         </div>
 
         <div class="side-panel">
-            <h1 style="margin-bottom: 5px;">🌫️ 暗殺霧チェス</h1>
-            <p style="color: #bdc3c7; font-size: 14px; margin-top: 0;">ルーム: <strong style="color: #f1c40f; font-size: 18px; letter-spacing: 1px;">{{ room_id }}</strong></p>
-            <hr style="border: 0; height: 1px; background: #5d6d7e; margin: 15px 0;">
-            <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 16px; margin-bottom: 8px;">あなたは: 判定中...</p>
+            <div class="top-bar-buttons">
+                <button class="icon-btn" onclick="cycleTheme()">🎨 <span data-i18n="btn_theme">テーマ</span></button>
+                <button class="icon-btn" onclick="cycleLanguage()">🌐 <span id="lang-label">日本語</span></button>
+            </div>
+            
+            <h1 style="margin-bottom: 5px;" data-i18n="app_title">🌫️ 暗殺霧チェス</h1>
+            <p style="color: var(--border-color); font-size: 14px; margin-top: 0;"><span data-i18n="room_label">ルーム:</span> <strong style="color: #f1c40f; font-size: 18px; letter-spacing: 1px;">{{ room_id }}</strong></p>
+            <hr style="border: 0; height: 1px; background: var(--border-color); margin: 15px 0;">
+            <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 16px; margin-bottom: 8px;" data-i18n="role_checking">あなたは: 判定中...</p>
             
             <div class="turn-box">
-                <h3 id="turn-display" style="font-size: 15px; margin: 0; line-height: 1.6;">読み込み中...</h3>
+                <h3 id="turn-display" style="font-size: 15px; margin: 0; line-height: 1.6;" data-i18n="loading">読み込み中...</h3>
             </div>
 
             <div class="graveyard-container">
                 <div class="grave-box my-grave">
-                    <span class="grave-title">⚔️ あなたが奪った駒</span>
+                    <span class="grave-title" data-i18n="grave_yours">⚔️ あなたが奪った駒</span>
                     <div id="my-captured" class="captured-pieces"></div>
                 </div>
                 <div class="grave-box enemy-grave">
-                    <span class="grave-title">💀 相手に奪われた駒</span>
+                    <span class="grave-title" data-i18n="grave_enemy">💀 相手に奪われた駒</span>
                     <div id="enemy-captured" class="captured-pieces"></div>
                 </div>
             </div>
 
             <div class="controls" style="display: flex; flex-direction: column; gap: 8px;">
-                <button class="btn-rules" onclick="openRules()">📖 ルールを確認</button>
+                <button class="btn-rules" onclick="openRules()">📖 <span data-i18n="btn_rules">ルールを確認</span></button>
                 <div style="display: flex; gap: 10px;">
-                    <button onclick="resetGame()" style="background-color: #95a5a6; flex: 1;">リセット</button>
-                    <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d; flex: 1;">退出する</button>
+                    <button onclick="resetGame()" style="background-color: #95a5a6; flex: 1;" data-i18n="btn_reset">リセット</button>
+                    <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d; flex: 1;" data-i18n="btn_leave">退出する</button>
                 </div>
             </div>
         </div>
@@ -103,35 +91,89 @@
 
     <script>
         const roomId = "{{ room_id }}";
-        if (!localStorage.getItem('chess_player_id')) {
-            localStorage.setItem('chess_player_id', 'p_' + Math.random().toString(36).substr(2, 9));
-        }
+        if (!localStorage.getItem('chess_player_id')) localStorage.setItem('chess_player_id', 'p_' + Math.random().toString(36).substr(2, 9));
         const playerId = localStorage.getItem('chess_player_id');
         let myColor = null;
 
+        // 🎨 テーマ管理
+        const themes = ['theme-dark', 'theme-light', 'theme-wood'];
+        let currentThemeIdx = parseInt(localStorage.getItem('chess_theme_idx') || '0');
+        function applyTheme() {
+            document.body.className = themes[currentThemeIdx];
+            localStorage.setItem('chess_theme_idx', currentThemeIdx);
+        }
+        function cycleTheme() {
+            currentThemeIdx = (currentThemeIdx + 1) % themes.length;
+            applyTheme();
+        }
+        applyTheme();
+
+        // 🌐 多言語辞書
+        const dict = {
+            ja: {
+                app_title: "🌫️ 暗殺霧チェス", btn_theme: "テーマ", room_label: "ルーム:", role_checking: "あなたは: 判定中...", loading: "読み込み中...",
+                grave_yours: "⚔️ あなたが奪った駒", grave_enemy: "💀 相手に奪われた駒", btn_rules: "ルールを確認", btn_reset: "リセット", btn_leave: "退出する",
+                rule_title: "📜 ルール", btn_close: "ゲームに戻る", switch_desc: "相手に画面が見えないように席を交代してください。", btn_ready: "準備完了！", tap_to_reveal: "タップして盤面の答え合わせをする",
+                rule_1: "<strong>勝利条件:</strong> 相手のキングを取る。", rule_2: "<strong>視界の霧:</strong> 自分の駒とその正面1マスのみ見える。", rule_3: "<strong>ソナー:</strong> 動かせる範囲に敵がいると「⚠️」表示。", rule_4: "<strong>通知:</strong> 相手が何を動かしたか通知される。", rule_5: "<strong>タイムリミット:</strong> 5ターンごとにキング公開。", rule_6: "<strong>暗殺予告:</strong> キングが狙われると警告が出る。",
+                role_w: "【 白（先攻） 】 陣営", role_b: "【 黒（後攻） 】 陣営", role_ai1: "【 白 】 陣営 (vs AI Lv.1: 接待)", role_ai2: "【 白 】 陣営 (vs AI Lv.2: 通常)", role_ai3: "【 白 】 陣営 (vs AI Lv.3: ガチ)",
+                turn_w: "【 白 】", turn_b: "【 黒 】", turn_now: "現在は {0} のターン", waiting_enemy: "相手が作戦を考えています...", 
+                moved_notice: "🔍 相手が 【 {0} 】 を動かしました", check_warn: "🚨 警告：あなたのキングが狙われています！！",
+                king_alert: "⚠️ キング公開中！（次ターンで隠れます）", king_count: "キング公開まで あと {0} ターン",
+                win_dom: "サドンデスの死闘を制し、完全なる覇者となった！", win_silent: "暗闇からの完璧なる奇襲。姿なき暗殺成功！", lose_desc: "暗闇の中に消え去った...。もう一度挑戦しよう！", draw_desc: "お互いに手詰まり、または戦力不足です。",
+                p_p: "ポーン ♟", p_r: "ルーク ♜", p_n: "ナイト ♞", p_b: "ビショップ ♝", p_q: "クイーン ♛", p_k: "キング ♚", next_turn: "次は {0} の番です"
+            },
+            en: {
+                app_title: "🌫️ Fog Chess", btn_theme: "Theme", room_label: "Room:", role_checking: "You are: Checking...", loading: "Loading...",
+                grave_yours: "⚔️ Your Trophies", grave_enemy: "💀 Lost Pieces", btn_rules: "Rules", btn_reset: "Reset", btn_leave: "Leave",
+                rule_title: "📜 Rules", btn_close: "Back to Game", switch_desc: "Please switch seats so the screen is hidden.", btn_ready: "Ready!", tap_to_reveal: "Tap to reveal the final board",
+                rule_1: "<strong>Victory:</strong> Capture the enemy King.", rule_2: "<strong>Fog:</strong> You only see your pieces and 1 square ahead.", rule_3: "<strong>Sonar:</strong> '⚠️' appears if an enemy is in attack range.", rule_4: "<strong>Notice:</strong> You are notified which piece the enemy moved.", rule_5: "<strong>Timer:</strong> Kings are revealed every 5 turns.", rule_6: "<strong>Assassination:</strong> Warns you if your King is targeted.",
+                role_w: "[ White (1st) ] Team", role_b: "[ Black (2nd) ] Team", role_ai1: "[ White ] vs AI Lv.1 (Easy)", role_ai2: "[ White ] vs AI Lv.2 (Normal)", role_ai3: "[ White ] vs AI Lv.3 (Hard)",
+                turn_w: "[ White ]", turn_b: "[ Black ]", turn_now: "It's {0}'s turn", waiting_enemy: "Opponent is thinking...", 
+                moved_notice: "🔍 Enemy moved [ {0} ]", check_warn: "🚨 WARNING: Your King is targeted!!",
+                king_alert: "⚠️ Kings Revealed! (Hidden next turn)", king_count: "Kings revealed in {0} turn(s)",
+                win_dom: "You dominated the sudden death and became the true champion!", win_silent: "A perfect ambush from the dark. Silent assassination successful!", lose_desc: "You faded into the darkness... Try again!", draw_desc: "Stalemate or insufficient material.",
+                p_p: "Pawn ♟", p_r: "Rook ♜", p_n: "Knight ♞", p_b: "Bishop ♝", p_q: "Queen ♛", p_k: "King ♚", next_turn: "Next is {0}'s turn"
+            },
+            zh: {
+                app_title: "🌫️ 迷雾象棋", btn_theme: "主题", room_label: "房间:", role_checking: "你是: 判定中...", loading: "加载中...",
+                grave_yours: "⚔️ 你缴获的棋子", grave_enemy: "💀 你失去的棋子", btn_rules: "查看规则", btn_reset: "重置游戏", btn_leave: "退出房间",
+                rule_title: "📜 规则", btn_close: "返回游戏", switch_desc: "请交换位置，不要让对方看到屏幕。", btn_ready: "准备完毕！", tap_to_reveal: "点击查看最终棋盘",
+                rule_1: "<strong>胜利条件:</strong> 吃掉对方的国王。", rule_2: "<strong>迷雾视野:</strong> 只能看到自己的棋子和正前方1格。", rule_3: "<strong>声纳探测:</strong> 攻击范围内有敌人会显示“⚠️”。", rule_4: "<strong>行动通知:</strong> 会通知你对方移动了什么棋子。", rule_5: "<strong>时间限制:</strong> 每5回合国王会暴露一次。", rule_6: "<strong>暗杀警告:</strong> 自己的国王被瞄准时会有警告。",
+                role_w: "【 白方 (先手) 】", role_b: "【 黑方 (后手) 】", role_ai1: "【 白方 】 (vs AI Lv.1 简单)", role_ai2: "【 白方 】 (vs AI Lv.2 普通)", role_ai3: "【 白方 】 (vs AI Lv.3 困难)",
+                turn_w: "【 白方 】", turn_b: "【 黑方 】", turn_now: "现在是 {0} 的回合", waiting_enemy: "对手正在思考中...", 
+                moved_notice: "🔍 对方移动了 【 {0} 】", check_warn: "🚨 警告：你的国王被盯上了！！",
+                king_alert: "⚠️ 国王暴露中！（下回合隐藏）", king_count: "距离国王暴露还有 {0} 回合",
+                win_dom: "在死亡淘汰赛中获胜，成为了真正的霸主！", win_silent: "来自黑暗的完美伏击。无声暗杀成功！", lose_desc: "你消失在黑暗中...再试一次吧！", draw_desc: "双方僵局或兵力不足，平局。",
+                p_p: "兵 ♟", p_r: "车 ♜", p_n: "马 ♞", p_b: "象 ♝", p_q: "后 ♛", p_k: "王 ♚", next_turn: "接下来是 {0} 的回合"
+            }
+        };
+
+        const langs = ['ja', 'en', 'zh'];
+        const langLabels = ['日本語', 'English', '中文'];
+        let currentLangIdx = parseInt(localStorage.getItem('chess_lang_idx') || '0');
+        let t = dict[langs[currentLangIdx]];
+
+        function applyLang() {
+            t = dict[langs[currentLangIdx]];
+            document.getElementById('lang-label').innerText = langLabels[currentLangIdx];
+            localStorage.setItem('chess_lang_idx', currentLangIdx);
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.innerHTML = t[key];
+            });
+            updateBoard(true); // 言語を変えたら表示も更新
+        }
+        function cycleLanguage() {
+            currentLangIdx = (currentLangIdx + 1) % langs.length;
+            applyLang();
+        }
+        
         function openRules() { document.getElementById('rules-modal').style.display = 'flex'; }
         function closeRules() { document.getElementById('rules-modal').style.display = 'none'; }
+        document.getElementById('result-overlay').onclick = function() { this.style.display = 'none'; }
 
-        document.getElementById('result-overlay').onclick = function() {
-            this.style.display = 'none';
-        }
-
-        const pieceNames = { "P": "ポーン ♟", "R": "ルーク ♜", "N": "ナイト ♞", "B": "ビショップ ♝", "Q": "クイーン ♛", "K": "キング ♚" };
         const icons = { "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
                             "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚" };
-
-        // 盤面の駒の数をフロント側でも数えるための関数
-        function countPiecesOnBoard(visibleBoard) {
-            let count = 0;
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    if (visibleBoard[r][c] !== 'fog' && visibleBoard[r][c] !== 'empty' && visibleBoard[r][c] !== 'sonar') {
-                        count++;
-                    }
-                }
-            }
-            return count;
-        }
 
         async function joinRoom() {
             const response = await fetch(`/join_room_backend/${roomId}`, {
@@ -139,23 +181,17 @@
             });
             const data = await response.json();
             if (data.status === 'full') {
-                document.getElementById('overlay-title').innerText = "満員です";
-                document.getElementById('overlay-desc').innerText = "この部屋はすでに2人で対戦中です。";
-                document.getElementById('online-overlay').style.display = 'flex';
+                alert("Room is Full");
                 return false;
             }
             myColor = data.color;
-            
-            let roleText = `【 ${myColor === 'W' ? '白（先攻）' : '黒（後攻）'} 】 陣営`;
-            if (roomId.startsWith('AI_1_')) roleText = "【 白 】 陣営 (vs AI Lv.1: 接待)";
-            else if (roomId.startsWith('AI_2_')) roleText = "【 白 】 陣営 (vs AI Lv.2: 通常)";
-            else if (roomId.startsWith('AI_3_')) roleText = "【 白 】 陣営 (vs AI Lv.3: ガチ)";
-            
-            document.getElementById('role-display').innerText = `あなたは: ${roleText}`;
+            applyLang(); // 初回言語適用
             return true;
         }
 
-        async function updateBoard() {
+        async function updateBoard(forceUpdate = false) {
+            if(!myColor && !forceUpdate) return;
+            
             const response = await fetch(`/get_game/${roomId}`, {
                 method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
             });
@@ -169,49 +205,48 @@
 
             const container = document.getElementById('chess-container');
             const switchScreen = document.getElementById('switch-screen');
-            const onlineOverlay = document.getElementById('online-overlay');
             const resultOverlay = document.getElementById('result-overlay');
             const resultMessage = document.getElementById('result-message');
             const resultSubDesc = document.getElementById('result-sub-desc');
             
             container.innerHTML = '';
             
+            // 役職テキスト更新
+            let roleText = t.role_w;
+            if (myColor === 'B') roleText = t.role_b;
+            if (roomId.startsWith('AI_1_')) roleText = t.role_ai1;
+            else if (roomId.startsWith('AI_2_')) roleText = t.role_ai2;
+            else if (roomId.startsWith('AI_3_')) roleText = t.role_ai3;
+            document.getElementById('role-display').innerText = t.role_checking.replace("判定中...", "").replace("Checking...", "").replace("判定中...", "") + " " + roleText;
+
             if (data.winner) {
-                document.getElementById('turn-display').innerHTML = `🎉 決着がつきました！<br>結果: ${data.winner}`;
+                document.getElementById('turn-display').innerHTML = `🎉 ${data.winner}`;
                 switchScreen.style.display = 'none'; 
-                onlineOverlay.style.display = 'none';
 
-                let myTeamName = myColor === 'W' ? '白' : '黒';
-                if (roomId.startsWith('AI_')) myTeamName = '白';
+                let myTeamName = myColor === 'W' ? 'W' : 'B';
+                if (roomId.startsWith('AI_')) myTeamName = 'W';
 
-                // 🤝 引き分け判定の処理
-                if (data.winner.includes("引き分け")) {
+                if (data.winner.includes("DRAW")) {
                     resultMessage.innerHTML = "🤝<br>DRAW";
                     resultMessage.className = "result-text result-win"; 
-                    resultSubDesc.innerText = "お互いに手詰まり、または戦力不足です。";
-                } 
-                // 👑 勝利・敗北の判定処理
-                else if (data.winner.includes(myTeamName)) {
-                    // 🌟 演出の分岐：サドンデス（80ターン以上 or 駒10個以下）だったかどうか
+                    resultSubDesc.innerText = t.draw_desc;
+                } else if (data.winner.includes(myTeamName)) {
                     let totalPieces = data.captured_by_W.length + data.captured_by_B.length;
                     let isSuddenDeathWin = (data.turn_count >= 80 || (32 - totalPieces) <= 10);
 
                     if (isSuddenDeathWin) {
-                        // 🔴 霧が晴れてからの勝利演出
                         resultMessage.innerHTML = "⚔️🔥<br>DOMINATION!";
                         resultMessage.className = "result-text result-domination";
-                        resultSubDesc.innerText = "サドンデスの死闘を制し、完全なる覇者となった！";
+                        resultSubDesc.innerText = t.win_dom;
                     } else {
-                        // 🟢 霧の中（通常時）での勝利演出
                         resultMessage.innerHTML = "🎭👥<br>SILENT ASSASSIN";
                         resultMessage.className = "result-text result-win";
-                        resultSubDesc.innerText = "暗闇からの完璧なる奇襲。姿なき暗殺成功！";
+                        resultSubDesc.innerText = t.win_silent;
                     }
                 } else {
-                    // 💀 敗北演出
                     resultMessage.innerHTML = "💀<br>YOU LOSE...";
                     resultMessage.className = "result-text result-lose";
-                    resultSubDesc.innerText = "暗闇の中に消え去った...。もう一度挑戦しよう！";
+                    resultSubDesc.innerText = t.lose_desc;
                 }
                 
                 if (resultOverlay.style.display === 'none' && !resultOverlay.dataset.shown) {
@@ -222,23 +257,30 @@
             } else {
                 resultOverlay.style.display = 'none';
                 resultOverlay.dataset.shown = ""; 
-                resultSubDesc.innerText = "タップして盤面の答え合わせをする"; // 元に戻す
 
-                let turnText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターン`;
+                let turnTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
+                let turnText = t.turn_now.replace("{0}", turnTeam);
+                
+                // 🌟 【邪魔な待機画面の廃止】相手のターンの時はテキストで優しくお知らせ
+                if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
+                    turnText += `<span class="waiting-text">⏳ ${t.waiting_enemy}</span>`;
+                }
+
                 if (data.last_moved_piece) {
                     const pType = data.last_moved_piece[1]; 
-                    turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">🔍 相手が 【 ${pieceNames[pType]} 】 を動かしました</span>`;
+                    const pName = t["p_" + pType.toLowerCase()];
+                    turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">${t.moved_notice.replace("{0}", pName)}</span>`;
                 }
                 if (data.is_check) {
-                    turnText += `<br><span class="check-warning">🚨 警告：あなたのキングが狙われています！！</span>`;
+                    turnText += `<br><span class="check-warning">${t.check_warn}</span>`;
                 }
 
                 let currentRound = Math.floor(data.turn_count / 2);
                 if (currentRound > 0 && currentRound % 5 === 0) {
-                    turnText += ` <br><span class="alert-text">⚠️ キング公開中！（次ターンで隠れます）</span>`;
+                    turnText += ` <br><span class="alert-text">${t.king_alert}</span>`;
                 } else {
                     let turnsLeft = 5 - (currentRound % 5);
-                    turnText += ` <br><span style="color: #f39c12; font-size: 0.8em; display: inline-block; margin-top: 3px;">キング公開まで あと ${turnsLeft} ターン</span>`;
+                    turnText += ` <br><span style="color: #f39c12; font-size: 0.8em; display: inline-block; margin-top: 3px;">${t.king_count.replace("{0}", turnsLeft)}</span>`;
                 }
                 document.getElementById('turn-display').innerHTML = turnText;
             }
@@ -262,16 +304,14 @@
             if (data.winner) { drawBoard(data); return; }
 
             if (data.player_count === 1 && !roomId.startsWith('AI_')) {
-                onlineOverlay.style.display = 'none';
                 if (data.switching_turn) {
-                    document.getElementById('next-player-text').innerText = `次は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 の番です`;
+                    let nextTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
+                    document.getElementById('next-player-text').innerText = t.next_turn.replace("{0}", nextTeam);
                     switchScreen.style.display = 'flex';
                 } else { switchScreen.style.display = 'none'; }
             } else {
                 switchScreen.style.display = 'none';
-                if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
-                    onlineOverlay.style.display = 'flex';
-                } else { onlineOverlay.style.display = 'none'; }
+                // オーバーレイは廃止したので何もしない
             }
             drawBoard(data);
         }
@@ -320,7 +360,12 @@
             location.href = '/';
         }
 
-        joinRoom().then(success => { if (success) { setInterval(updateBoard, 1000); updateBoard(); } });
+        joinRoom().then(success => { 
+            if (success) { 
+                setInterval(updateBoard, 1000); 
+                updateBoard(); 
+            } 
+        });
     </script>
 </body>
 </html>

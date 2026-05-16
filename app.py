@@ -40,13 +40,11 @@ def get_or_create_room(room_id):
         }
     return game_rooms[room_id]
 
-# 盤面の「現在の生き残っている全ての駒の数」を数える
 def count_pieces(board):
     count = 0
     for r in range(8):
         for c in range(8):
-            if board[r][c] != "--":
-                count += 1
+            if board[r][c] != "--": count += 1
     return count
 
 def get_valid_moves_for_board(board, r, c):
@@ -109,14 +107,12 @@ def is_in_check_board(board, color):
                 break
         if king_pos: break
     if not king_pos: return False 
-    
     enemy_color = "B" if color == "W" else "W"
     for r in range(8):
         for c in range(8):
             if board[r][c].startswith(enemy_color):
                 moves = get_valid_moves_for_board(board, r, c)
-                if king_pos in moves:
-                    return True
+                if king_pos in moves: return True
     return False
 
 def get_legal_moves_for_board(board, r, c):
@@ -125,31 +121,22 @@ def get_legal_moves_for_board(board, r, c):
     color = piece[0]
     pseudo_moves = get_valid_moves_for_board(board, r, c)
     legal_moves = []
-    
     for mr, mc in pseudo_moves:
         captured = board[mr][mc]
         board[mr][mc] = piece
         board[r][c] = "--"
-        
-        if not is_in_check_board(board, color):
-            legal_moves.append([mr, mc])
-            
+        if not is_in_check_board(board, color): legal_moves.append([mr, mc])
         board[r][c] = piece
         board[mr][mc] = captured
     return legal_moves
 
-# 🌟 重要な新機能：「逃げ場なし（詰み）」を自動判定するシステム
 def check_game_over_status(room_id):
     room = game_rooms[room_id]
     board = room["board"]
     turn = room["current_turn"]
-    
-    # 1. 物理的なドロー判定：盤面にキング2人しかいない
     if count_pieces(board) == 2:
-        room["winner"] = "引き分け（戦力不足によるドロー）"
+        room["winner"] = "DRAW_INSUFFICIENT"
         return
-
-    # 現在のターンの陣営が「動かせる手」が残っているか全スキャン
     has_legal_move = False
     for r in range(8):
         for c in range(8):
@@ -158,22 +145,16 @@ def check_game_over_status(room_id):
                     has_legal_move = True
                     break
         if has_legal_move: break
-
-    # もし動かせる手が1つもない（逃げ場なし）の場合
     if not has_legal_move:
         if is_in_check_board(board, turn):
-            # 王手されている ＝ チェックメイト（詰み）
-            winner_color = "黒" if turn == "W" else "白"
-            room["winner"] = f"{winner_color}（チェックメイト）"
+            winner_color = "B" if turn == "W" else "W"
+            room["winner"] = f"WIN_{winner_color}"
         else:
-            # 王手されていないのに動かせない ＝ ステイルメイト（手詰まり引き分け）
-            room["winner"] = "引き分け（ステイルメイト）"
+            room["winner"] = "DRAW_STALEMATE"
 
 def get_visible_board(room_id, player_color):
     room = get_or_create_room(room_id)
     board = room["board"]
-    
-    # 🌟 変更点：勝負アリ、または【サドンデスライン（80ターン以上 OR 駒10個以下）】に達したら霧を全解除！
     is_sudden_death = (room["turn_count"] >= 80 or count_pieces(board) <= 10)
     
     if room["winner"] or is_sudden_death:
@@ -242,8 +223,6 @@ def evaluate_board(board, room_id=None):
     score = 0
     wk_alive = False
     bk_alive = False
-
-    # 🌟 レベル3進化用のキング位置取得
     wk_pos = None
     for r in range(8):
         for c in range(8):
@@ -253,32 +232,26 @@ def evaluate_board(board, room_id=None):
                     wk_alive = True
                     wk_pos = (r, c)
                 if piece == "BK": bk_alive = True
-                
                 val = piece_values.get(piece[1], 0)
                 if piece.startswith("B"):
                     score += val
                     if piece[1] == "P": score += r 
                 else:
                     score -= val
-
     if not wk_alive: return 99999  
     if not bk_alive: return -99999 
     
-    # 🌟 レベル3サドンデス判定：駒10個以下または80ターン以上なら「追い詰めアルゴリズム」発動
     if room_id and (game_rooms[room_id]["turn_count"] >= 80 or count_pieces(board) <= 10):
         if wk_pos:
-            # プレイヤーのキングを「四隅（盤面の端）」に追い詰めるほど高得点を与える計算
             w_r, w_c = wk_pos
             center_distance_r = max(3.5 - w_r, w_r - 3.5)
             center_distance_c = max(3.5 - w_c, w_c - 3.5)
-            score += (center_distance_r + center_distance_c) * 15 # 端っこに追いやるボーナス
-
+            score += (center_distance_r + center_distance_c) * 15 
     return score
 
 def minimax(board, depth, alpha, beta, is_maximizing, room_id):
     eval_score = evaluate_board(board, room_id)
-    if abs(eval_score) >= 90000 or depth == 0:
-        return eval_score
+    if abs(eval_score) >= 90000 or depth == 0: return eval_score
         
     if is_maximizing: 
         max_eval = -float('inf')
@@ -320,19 +293,14 @@ def minimax(board, depth, alpha, beta, is_maximizing, room_id):
             beta = min(beta, eval)
             if beta <= alpha: break 
         return min_eval
-# --------------------------
 
 @app.route('/')
 def lobby():
     random_id = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-    if not os.path.exists(os.path.join(template_dir, 'lobby.html')):
-        return "<h3>エラー: templatesフォルダの中に lobby.html が見つかりません。</h3>"
     return render_template('lobby.html', suggested_id=random_id)
 
 @app.route('/room/<room_id>')
 def room(room_id):
-    if not os.path.exists(os.path.join(template_dir, 'index.html')):
-        return "<h3>エラー: templatesフォルダの中に index.html が見つかりません。</h3>"
     return render_template('index.html', room_id=room_id)
 
 @app.route('/join_room_backend/<room_id>', methods=['POST'])
@@ -368,14 +336,19 @@ def get_game(room_id):
         player_color = room["current_turn"]
         
     valid_moves = []
-    if room["selected_pos"] and room["current_turn"] == player_color and not room["switching_turn"]:
-        sr, sc = room["selected_pos"]
-        valid_moves = get_legal_moves_for_board(room["board"], sr, sc)
+    send_selected = None # 🌟 修正点：デフォルトは送らない
+    
+    # 🌟 修正点：自分のターンの時だけ、選択している駒（赤い枠）の情報を自分に返す
+    if room["current_turn"] == player_color and not room["switching_turn"]:
+        if room["selected_pos"]:
+            sr, sc = room["selected_pos"]
+            valid_moves = get_legal_moves_for_board(room["board"], sr, sc)
+            send_selected = room["selected_pos"]
         
     return jsonify({
         "visible_board": get_visible_board(room_id, player_color),
         "current_turn": room["current_turn"],
-        "selected": room["selected_pos"],
+        "selected": send_selected, # 相手には見えなくなりました！
         "valid_moves": valid_moves,
         "winner": room["winner"],
         "switching_turn": room["switching_turn"],
@@ -431,7 +404,7 @@ def click_square(room_id):
             if turn == "W": room["captured_by_W"].append(target_piece)
             else: room["captured_by_B"].append(target_piece)
             
-        if target_piece in ["WK", "BK"]: room["winner"] = "白" if turn == "W" else "黒"
+        if target_piece in ["WK", "BK"]: room["winner"] = f"WIN_{turn}"
         
         board[r][c] = moving_piece
         board[sr][sc] = "--"
@@ -450,7 +423,6 @@ def click_square(room_id):
                     if 0 <= nr < 8 and 0 <= nc < 8 and (dr != 0 or dc != 0):
                         room["ai_heatmap"][nr][nc] += 10.0
 
-        # 行動後に「詰み・手詰まり・ドロー」をスキャン
         check_game_over_status(room_id)
 
         if len(room["players"]) == 1 and not room_id.startswith("AI_"):
@@ -472,11 +444,8 @@ def ai_move(room_id):
     board = room["board"]
     heatmap = room["ai_heatmap"]
     chosen = None
-    
-    # サドンデス（終盤）フラグ
     is_sudden_death = (room["turn_count"] >= 80 or count_pieces(board) <= 10)
 
-    # 🟢 レベル1：接待プレイ
     if "_1_" in room_id:
         possible_moves = []
         for r in range(8):
@@ -487,15 +456,12 @@ def ai_move(room_id):
                     for mr, mc in moves:
                         target = board[mr][mc]
                         score = random.randint(0, 5)
-                        
-                        # 🌟 レベル1のサドンデス：プレイヤーの駒に突っ込んで自殺する（投了モード）
                         if is_sudden_death and p_type == "K":
-                            # プレイヤーの駒（W）の移動範囲（攻撃範囲）を調べる
                             for wr in range(8):
                                 for wc in range(8):
                                     if board[wr][wc].startswith("W"):
                                         if [mr, mc] in get_valid_moves_for_board(board, wr, wc):
-                                            score += 500 # 危険地帯へ進んで首を差し出す
+                                            score += 500 
                         else:
                             if target != "--" and target.startswith("W"):
                                 score += 20
@@ -507,12 +473,9 @@ def ai_move(room_id):
             top_moves = possible_moves[:min(3, len(possible_moves))] 
             chosen = random.choice(top_moves)
 
-    # 🟠 レベル2：熱源探知AI
     elif "_2_" in room_id:
         possible_moves = []
         piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90}
-        
-        # プレイヤーのキングの現在位置を探す（全力暗殺用）
         wk_pos = None
         for r in range(8):
             for c in range(8):
@@ -531,11 +494,10 @@ def ai_move(room_id):
                             if target == "WK": score += 100000 
                             else: score += piece_values.get(target_type, 10) * 10
                         
-                        # 🌟 レベル2のサドンデス：霧が晴れたので、熱源を無視してキングへ直線進軍
                         if is_sudden_death and wk_pos and p_type != "K":
                             dist_before = abs(r - wk_pos[0]) + abs(c - wk_pos[1])
                             dist_after = abs(mr - wk_pos[0]) + abs(mc - wk_pos[1])
-                            if dist_after < dist_before: score += 40 # キングに近づく手に超ボーナス
+                            if dist_after < dist_before: score += 40 
                         else:
                             target_heat = heatmap[mr][mc]
                             if p_type == "K": score -= target_heat * 2
@@ -550,13 +512,11 @@ def ai_move(room_id):
             top_moves = [m for m in possible_moves if m[0] >= best_score - 10]
             chosen = random.choice(top_moves)
 
-    # 🔴 レベル3：先読みガチAI
     else: 
         best_score = -float('inf')
         best_moves = []
         alpha = -float('inf')
         beta = float('inf')
-        
         all_moves = []
         for r in range(8):
             for c in range(8):
@@ -578,8 +538,7 @@ def ai_move(room_id):
                     promoted = True
                     
                 score = minimax(board, SEARCH_DEPTH - 1, alpha, beta, False, room_id)
-                if not is_sudden_death:
-                    score += heatmap[mr][mc] * 0.5 
+                if not is_sudden_death: score += heatmap[mr][mc] * 0.5 
                 
                 board[r][c] = "BP" if promoted else board[mr][mc]
                 board[mr][mc] = captured
@@ -597,18 +556,14 @@ def ai_move(room_id):
                 chosen = (0, move[0], move[1], move[2], move[3])
 
     if not chosen: 
-        # AIが安全に動かせる手が1つもない時（AI側の詰み）
         check_game_over_status(room_id)
         return jsonify({"status": "no_moves"})
 
     score, sr, sc, tr, tc = chosen
     target_piece = board[tr][tc]
     moving_piece = board[sr][sc]
-    
-    if target_piece != "--" and target_piece not in ["WK", "BK"]:
-        room["captured_by_B"].append(target_piece)
-        
-    if target_piece == "WK": room["winner"] = "黒（AI）"
+    if target_piece != "--" and target_piece not in ["WK", "BK"]: room["captured_by_B"].append(target_piece)
+    if target_piece == "WK": room["winner"] = "WIN_B"
         
     board[tr][tc] = moving_piece
     board[sr][sc] = "--"
@@ -620,10 +575,7 @@ def ai_move(room_id):
 
     room["current_turn"] = "W"
     room["switching_turn"] = False
-    
-    # AIの行動後にも「詰み・手詰まり・ドロー」をスキャン
     check_game_over_status(room_id)
-
     room["last_moved_piece"] = moving_piece
     room["turn_count"] += 1
     return jsonify({"status": "moved"})
