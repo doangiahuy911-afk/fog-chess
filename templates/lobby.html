@@ -13,29 +13,96 @@
         .btn-join { background-color: #9b59b6; width: 95%; color: white;}
         hr { border: 0; height: 1px; background: #5d6d7e; margin: 20px 0; }
         .ai-buttons-container { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        
+        /* 📜 スクロール可能な詳細ルール用のスタイル */
+        .rules-box-detail {
+            max-height: 65vh;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .rules-section {
+            background: #233140;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #f1c40f;
+        }
+        .rules-section h4 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #f1c40f;
+            font-size: 15px;
+        }
+        .rules-section p, .rules-section ul {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #ecf0f1;
+            padding-left: 15px;
+        }
+        .rules-section ul { padding-left: 20px; }
     </style>
 </head>
 <body>
 
     <div id="rules-modal" class="switch-overlay" style="display: none;">
-        <div class="switch-box" style="padding: 20px; text-align: left; color: #ecf0f1;">
-            <h3 style="color: #f1c40f; text-align: center; margin-top: 0;">📜 暗殺霧チェスのルール</h3>
-            <ul style="padding-left: 20px; font-size: 14px;">
-                <li><strong>勝利条件:</strong> 相手のキングを取る</li>
-                <li><strong>視界:</strong> 自分の駒とその正面1マスのみ</li>
-                <li><strong>ソナー:</strong> 攻撃範囲に敵がいると「⚠️」</li>
-                <li><strong>通知:</strong> 相手が動かした駒の種類がわかる</li>
-                <li><strong>タイムリミット:</strong> 5ターン周期でキングが公開される</li>
-                <li><strong>暗殺予告:</strong> 自分のキングが狙われると警告が出る</li>
-            </ul>
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c;">閉じる</button>
+        <div class="switch-box" style="padding: 20px; width: 90%; max-width: 450px; text-align: left; color: #ecf0f1;">
+            <h3 style="color: #f1c40f; text-align: center; margin-top: 0; margin-bottom: 15px;">📜 暗殺霧チェス 公式ルールブック</h3>
+            
+            <div class="rules-box-detail">
+                <div class="rules-section">
+                    <h4>👁️ 1. 基本ルール（暗闇の探索）</h4>
+                    <ul>
+                        <li><strong>視界の制限:</strong> 盤面は深い霧に包まれており、見えるのは<strong>「自分の駒があるマス」とその「正面1マス」</strong>だけです。</li>
+                        <li><strong>索敵ソナー:</strong> 自分の駒が動かせる範囲に敵が潜んでいる場合、そのマスが赤く光り<strong>「⚠️」</strong>と表示されます。</li>
+                        <li><strong>行動通知:</strong> 相手が駒を動かすと、画面に「相手がポーンを動かしました」等のログが出ます（場所は秘密です）。</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4>🚨 2. 暗殺予告（王手と自殺手の禁止）</h4>
+                    <ul>
+                        <li><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分側の画面にだけ<strong>「🚨 警告：キングが狙われています！」</strong>と表示されます。相手にはバレていません！</li>
+                        <li><strong>自殺手の禁止:</strong> キングがわざと敵の攻撃範囲に飛び込む手や、味方のキングを危険にさらす手（自殺手）は<strong>システムでロックされ、選択できなくなります。</strong></li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4>🔥 3. 終盤サドンデス（霧の消滅）</h4>
+                    <p>以下のいずれかの条件を満たした瞬間、<strong>全ての霧が晴れて盤面が完全公開</strong>になり、ガチの公開頭脳戦へ移行します！</p>
+                    <ul>
+                        <li>対局が<strong>合計 80 ターン</strong>を超えた時</li>
+                        <li>お互いの生き残っている駒が<strong>合計 10 個以下</strong>になった時</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4>🏁 4. 勝敗と決着ルール（無限ループ防止）</h4>
+                    <ul>
+                        <li><strong>チェックメイト（勝利）:</strong> 敵のキングを王手し、どこにも逃げられない状態に追い詰めればその瞬間に強制終了し、勝利となります！</li>
+                        <li><strong>ステイルメイト（引き分け）:</strong> 王手はされていないが、自分の番に動かせる駒が1つもない（自殺手しか残っていない）場合は、手詰まりで<strong>引き分け</strong>となります。</li>
+                        <li><strong>戦力不足（引き分け）:</strong> 盤面にキング2人だけしか残らなくなった場合、絶対に決着がつかないため即座に<strong>引き分け</strong>になります。</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section" style="border-left-color: #9b59b6;">
+                    <h4>🤖 5. 対AI戦・難易度レベル解説</h4>
+                    <ul>
+                        <li><strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。</li>
+                        <li><strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。</li>
+                        <li><strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin: 0; width: 100%;">ルールを閉じる</button>
             </div>
         </div>
     </div>
 
     <h1>🌫️ 暗殺霧チェス ロビー</h1>
-    <button class="btn-rules" onclick="openRules()" style="max-width: 350px;">📖 ルールを確認する</button>
+    <button class="btn-rules" onclick="openRules()" style="max-width: 350px;">📖 ルール・AI解説を確認する</button>
 
     <div class="box">
         <h3 style="margin-top: 0;">🔑 新しく部屋を作る</h3>
@@ -54,7 +121,6 @@
         <h3 style="margin-top: 0;">🤖 1人で遊ぶ (CPU戦)</h3>
         <p style="color: #bdc3c7; font-size: 12px; margin-bottom: 10px;">相手の強さを選んでください</p>
         
-        <!-- 🌟 難易度選択ボタン -->
         <div class="ai-buttons-container">
             <button class="btn-ai-1" onclick="playAI(1)">🟢 Lv.1 接待プレイ（練習用）</button>
             <button class="btn-ai-2" onclick="playAI(2)">🟠 Lv.2 熱源探知（通常）</button>
@@ -72,7 +138,6 @@
             else alert('パスワードを入力してください！');
         }
         function playAI(level) { 
-            // 🌟 URLの部屋名に「_1_」などを仕込んで、サーバー側でレベルを判定させる
             location.href = '/room/AI_' + level + '_' + Math.random().toString(36).substr(2, 6); 
         }
     </script>
