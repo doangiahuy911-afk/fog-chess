@@ -11,6 +11,7 @@
     --fog-sq: #34495e;
     --sq-text: #2c3e50;
     --border-color: #5d6d7e;
+    --turn-glow: 0 0 0px transparent; /* 🌟 ターン発光用 */
 }
 /* ☀️ ライトテーマ */
 body.theme-light {
@@ -37,6 +38,13 @@ body.theme-wood {
     --border-color: #3e2723;
 }
 
+/* 🌟 自分のターンが来たらチェス盤をネオンのように発光させるクラス */
+#chess-container.your-turn-active {
+    box-shadow: 0 0 30px #2ecc71, 0 0 15px #2ecc71;
+    border-color: #2ecc71;
+    transition: all 0.3s ease;
+}
+
 /* -----------------------------------
    ベース設定
 ----------------------------------- */
@@ -47,13 +55,45 @@ body { background-color: var(--bg-color); color: var(--text-color); font-family:
 h1 { font-size: 6vw; margin-top: 0; }
 
 /* -----------------------------------
-   チェス盤のデザイン
+   チェス盤のデザイン（マス目のバグ修正）
 ----------------------------------- */
-#chess-container { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 95vw; max-width: 500px; aspect-ratio: 1 / 1; border: 4px solid var(--box-bg); border-radius: 8px; background-color: var(--box-bg); touch-action: manipulation; -webkit-user-select: none; user-select: none; box-shadow: 0 8px 25px var(--box-shadow); transition: background-color 0.3s;}
-.square { display: flex; justify-content: center; align-items: center; font-size: 7vw; cursor: pointer; box-sizing: border-box; -webkit-tap-highlight-color: transparent; color: var(--sq-text); transition: background-color 0.3s;}
+#chess-container { 
+    display: grid; 
+    grid-template-columns: repeat(8, 1fr); 
+    grid-template-rows: repeat(8, 1fr); 
+    width: 95vw; 
+    max-width: 500px; 
+    aspect-ratio: 1 / 1; 
+    border: 4px solid var(--box-bg); 
+    border-radius: 12px; 
+    background-color: var(--box-bg); 
+    touch-action: manipulation; 
+    -webkit-user-select: none; 
+    user-select: none; 
+    box-shadow: 0 8px 25px var(--box-shadow); 
+    overflow: hidden; /* マスのはみ出しを防止 */
+    transition: all 0.3s ease;
+}
+
+/* 🌟 修正点：入る駒に関わらず幅・高さを「100%」で固定し、絶対に伸縮させない */
+.square { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    width: 100%;
+    height: 100%;
+    font-size: 8vw; /* スマホで最適な駒のサイズ */
+    font-weight: normal;
+    cursor: pointer; 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent; 
+    color: var(--sq-text); 
+    overflow: hidden; /* 文字が枠を広げるのを完全に防ぐ */
+    transition: background-color 0.2s;
+}
 .light-square { background-color: var(--light-sq); }
 .dark-square { background-color: var(--dark-sq); }
-.fog-square { background-color: var(--fog-sq); color: transparent; }
+.fog-square { background-color: var(--fog-sq); color: transparent !important; }
 .sonar-square { background-color: #e74c3c; color: white !important; font-size: 5vw; }
 .highlight-square { background-color: rgba(46, 204, 113, 0.4) !important; box-shadow: inset 0 0 10px #2ecc71; }
 
@@ -71,7 +111,7 @@ h1 { font-size: 6vw; margin-top: 0; }
 .cap-black { color: #000; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
 
 /* -----------------------------------
-   🎉 勝敗発表（ド派手な演出）
+   🎉 勝敗発表
 ----------------------------------- */
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -100,7 +140,7 @@ h1 { font-size: 6vw; margin-top: 0; }
     .game-layout { flex-direction: row; align-items: center; justify-content: center; padding: 40px 20px; }
     .side-panel { max-width: 380px; text-align: left; }
     #chess-container { width: 100%; max-width: 600px; margin: 0; }
-    .square { font-size: 50px; }
+    .square { font-size: 55px; } /* PCでの駒のサイズを最適化 */
     .sonar-square { font-size: 35px !important; }
     h1 { font-size: 28px; }
     .result-text { font-size: 60px; }
@@ -119,7 +159,5 @@ button:hover { filter: brightness(1.1); transform: scale(0.97); }
 .switch-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
 .switch-box { background: var(--box-bg); padding: 30px; border-radius: 12px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
 .ready-btn { background-color: #2ecc71; color: white; width: 100%; padding: 15px; margin-top: 15px;}
-
-/* 🌟 カスタマイズボタン用 */
 .top-bar-buttons { display: flex; justify-content: space-between; margin-bottom: 15px; }
 .icon-btn { background: rgba(0,0,0,0.2); color: var(--text-color); padding: 8px 12px; font-size: 14px; border-radius: 5px; flex: 1; margin: 0 5px;}

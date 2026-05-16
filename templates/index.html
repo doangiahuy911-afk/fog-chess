@@ -10,11 +10,12 @@
         .rules-content li { margin-bottom: 12px; }
         .alert-text { color: #e74c3c; font-weight: bold; animation: alert-blink 1.5s infinite; }
         @keyframes alert-blink { 0% { opacity: 1; } 50% { opacity: 0.5; color: #ffeb3b; } 100% { opacity: 1; } }
-        .turn-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #f1c40f; }
+        .turn-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #f1c40f; transition: border-color 0.3s; }
+        .turn-box.my-turn-border { border-left-color: #2ecc71 !important; }
         @keyframes check-blink { 0% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } 50% { transform: scale(1.05); opacity: 0.8; text-shadow: 0 0 20px #ff0000; } 100% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } }
         .check-warning { color: #ff4757; font-size: 16px; font-weight: bold; display: inline-block; margin-top: 10px; animation: check-blink 0.8s infinite; border: 2px solid #ff4757; padding: 5px 10px; border-radius: 5px; background-color: rgba(255, 71, 87, 0.1); }
-        /* 待機中の表示をオーバーレイからテキストに変更 */
         .waiting-text { color: #bdc3c7; font-size: 14px; font-weight: normal; margin-top: 5px; display: block; }
+        .my-turn-text { color: #2ecc71 !important; font-weight: bold; font-size: 1.1em; }
     </style>
 </head>
 <body>
@@ -28,7 +29,7 @@
                     <li data-i18n="rule_2"><strong>視界の霧:</strong> 自分の駒とその正面1マスのみ見える。</li>
                     <li data-i18n="rule_3"><strong>ソナー:</strong> 動かせる範囲に敵がいると「⚠️」表示。</li>
                     <li data-i18n="rule_4"><strong>通知:</strong> 相手が何を動かしたか通知される（場所は非公開）。</li>
-                    <li data-i18n="rule_5"><strong>タイムリミット:</strong> 5ターンごとにキングが公開される。</li>
+                    <li data-i18n="rule_5"><strong>タイムリミット:</strong> 5ターンごとにキング公開。</li>
                     <li data-i18n="rule_6"><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分にだけ警告が出ます。</li>
                 </ul>
             </div>
@@ -64,7 +65,7 @@
             <hr style="border: 0; height: 1px; background: var(--border-color); margin: 15px 0;">
             <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 16px; margin-bottom: 8px;" data-i18n="role_checking">あなたは: 判定中...</p>
             
-            <div class="turn-box">
+            <div class="turn-box" id="turn-box-container">
                 <h3 id="turn-display" style="font-size: 15px; margin: 0; line-height: 1.6;" data-i18n="loading">読み込み中...</h3>
             </div>
 
@@ -161,7 +162,7 @@
                 const key = el.getAttribute('data-i18n');
                 if (t[key]) el.innerHTML = t[key];
             });
-            updateBoard(true); // 言語を変えたら表示も更新
+            updateBoard(true);
         }
         function cycleLanguage() {
             currentLangIdx = (currentLangIdx + 1) % langs.length;
@@ -172,8 +173,11 @@
         function closeRules() { document.getElementById('rules-modal').style.display = 'none'; }
         document.getElementById('result-overlay').onclick = function() { this.style.display = 'none'; }
 
-        const icons = { "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
-                            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚" };
+        // 🌟 【変更点】：白抜きと黒塗りの駒アイコンの割り当てを完全修正しました！
+        const icons = {
+            "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
+            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚"
+        };
 
         async function joinRoom() {
             const response = await fetch(`/join_room_backend/${roomId}`, {
@@ -185,7 +189,7 @@
                 return false;
             }
             myColor = data.color;
-            applyLang(); // 初回言語適用
+            applyLang();
             return true;
         }
 
@@ -208,16 +212,25 @@
             const resultOverlay = document.getElementById('result-overlay');
             const resultMessage = document.getElementById('result-message');
             const resultSubDesc = document.getElementById('result-sub-desc');
+            const turnBox = document.getElementById('turn-box-container');
             
             container.innerHTML = '';
             
-            // 役職テキスト更新
             let roleText = t.role_w;
             if (myColor === 'B') roleText = t.role_b;
             if (roomId.startsWith('AI_1_')) roleText = t.role_ai1;
             else if (roomId.startsWith('AI_2_')) roleText = t.role_ai2;
             else if (roomId.startsWith('AI_3_')) roleText = t.role_ai3;
             document.getElementById('role-display').innerText = t.role_checking.replace("判定中...", "").replace("Checking...", "").replace("判定中...", "") + " " + roleText;
+
+            let isMyTurn = (data.current_turn === myColor || (data.player_count === 1 && !roomId.startsWith('AI_')) || roomId.startsWith('AI_'));
+            if (isMyTurn && !data.winner && !data.switching_turn) {
+                container.classList.add('your-turn-active'); 
+                turnBox.classList.add('my-turn-border');    
+            } else {
+                container.classList.remove('your-turn-active');
+                turnBox.classList.remove('my-turn-border');
+            }
 
             if (data.winner) {
                 document.getElementById('turn-display').innerHTML = `🎉 ${data.winner}`;
@@ -257,11 +270,17 @@
             } else {
                 resultOverlay.style.display = 'none';
                 resultOverlay.dataset.shown = ""; 
+                resultSubDesc.innerText = t.tap_to_reveal;
 
                 let turnTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
-                let turnText = t.turn_now.replace("{0}", turnTeam);
                 
-                // 🌟 【邪魔な待機画面の廃止】相手のターンの時はテキストで優しくお知らせ
+                let turnText = "";
+                if (isMyTurn) {
+                    turnText = t.turn_now.replace("{0}", `<span class="my-turn-text">${turnTeam} (YOUR TURN)</span>`);
+                } else {
+                    turnText = t.turn_now.replace("{0}", turnTeam);
+                }
+                
                 if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
                     turnText += `<span class="waiting-text">⏳ ${t.waiting_enemy}</span>`;
                 }
@@ -311,7 +330,6 @@
                 } else { switchScreen.style.display = 'none'; }
             } else {
                 switchScreen.style.display = 'none';
-                // オーバーレイは廃止したので何もしない
             }
             drawBoard(data);
         }
