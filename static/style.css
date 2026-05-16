@@ -1,107 +1,82 @@
+/* ベースの設定（スマホの余計なスクロールを防止） */
 body {
     background-color: #2c3e50;
-    color: #ffffff;
+    color: white;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     text-align: center;
-    padding: 20px;
+    margin: 0;
+    padding: 10px;
+    touch-action: pan-y; /* 縦スクロールだけ許可 */
 }
 
-h1 { color: #ecf0f1; margin-bottom: 5px; }
-h2 { color: #f1c40f; margin-bottom: 30px; }
+h1 {
+    font-size: 6vw; /* スマホ画面に合わせて文字サイズを縮小 */
+}
 
+/* 📱 チェス盤をスマホにピッタリ合わせる設定 */
 #chess-container {
     display: grid;
-    grid-template-columns: repeat(8, 60px);
-    grid-template-rows: repeat(8, 60px);
-    gap: 2px;
-    width: 496px;
-    margin: 0 auto;
-    background-color: #34495e;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+    grid-template-columns: repeat(8, 1fr);
+    width: 95vw;          /* 画面幅の95%を使う */
+    max-width: 500px;     /* PCで見るときは最大500pxまで */
+    aspect-ratio: 1 / 1;  /* 絶対に正方形を維持する */
+    margin: 15px auto;
+    border: 4px solid #34495e;
+    border-radius: 5px;
+    
+    /* ⚡ これがもっさり感をなくす魔法のコード！ */
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
+/* マス目と駒のデザイン */
 .square {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 32px;
+    font-size: 7vw; /* 駒のサイズも画面に合わせて可変 */
     cursor: pointer;
-    user-select: none;
-    transition: background-color 0.2s;
+    /* タップした時の青い謎のハイライトを消す */
+    -webkit-tap-highlight-color: transparent;
 }
 
-.light-square { background-color: #e0e4e8; color: #333; }
-.dark-square { background-color: #a0aab5; color: #333; }
+/* PC画面用の文字サイズ調整 */
+@media (min-width: 550px) {
+    h1 { font-size: 32px; }
+    .square { font-size: 35px; }
+}
 
-/* 🟦 進めるマスのハイライト（さわやかな青） */
+/* 色の設定 */
+.light-square { background-color: #ecf0f1; color: #2c3e50; }
+.dark-square { background-color: #95a5a6; color: #2c3e50; }
+.fog-square { background-color: #34495e; color: transparent; }
+.sonar-square { background-color: #e74c3c; color: white !important; font-size: 5vw; }
+
 .highlight-square {
-    background-color: #3498db !important;
-    cursor: pointer;
+    background-color: rgba(46, 204, 113, 0.4) !important;
+    box-shadow: inset 0 0 10px #2ecc71;
 }
 
-.fog-square {
-    background-color: #7f8c8d !important;
-    color: #7f8c8d;
-    cursor: not-allowed;
-}
-
-.sonar-square {
-    background-color: #e74c3c !important;
-    color: #ffffff !important;
-}
-
-.controls button {
-    margin-top: 30px;
-    padding: 10px 20px;
+/* スマホでも押しやすい大きめのボタン */
+button {
+    padding: 12px 20px;
     font-size: 16px;
-    background-color: #e67e22;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-.controls button:hover { background-color: #d35400; }
-
-
-
-/* 👥 プレイヤー交代用の暗転レイアウト */
-.switch-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(22, 160, 133, 0.95); /* 高級感のある深い緑で画面全体を覆う */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999; /* チェス盤より絶対に上に表示 */
-}
-
-.switch-box {
-    background-color: #34495e;
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.7);
-    text-align: center;
-}
-
-.ready-btn {
-    margin-top: 25px;
-    padding: 15px 30px;
-    font-size: 20px;
-    font-weight: bold;
-    background-color: #2ecc71; /* 鮮やかな緑のボタン */
-    color: white;
-    border: none;
     border-radius: 8px;
+    margin: 5px;
+    border: none;
+    font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    transition: background-color 0.2s;
+    /* ボタンも爆速反応に */
+    touch-action: manipulation; 
 }
 
-.ready-btn:hover {
-    background-color: #27ae60;
+/* 画面を覆うオーバーレイ（ルール画面や待機画面など） */
+.switch-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000;
 }
+.switch-box { background: #34495e; padding: 30px; border-radius: 10px; width: 85%; max-width: 400px; }
+.ready-btn { background-color: #2ecc71; color: white; width: 100%; padding: 15px; }

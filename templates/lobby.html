@@ -2,26 +2,26 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <!-- 📱 スマホ対応コード -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>暗殺霧チェス - ロビー</title>
     <style>
-        body { background-color: #2c3e50; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .box { background-color: #34495e; padding: 40px; display: inline-block; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); width: 350px; }
-        input { padding: 12px; font-size: 18px; border-radius: 5px; border: none; width: 80%; text-align: center; margin-bottom: 15px; }
-        button { padding: 12px 24px; font-size: 18px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 85%; margin-top: 5px;}
+        body { background-color: #2c3e50; color: white; font-family: sans-serif; text-align: center; padding-top: 20px; margin: 0; }
+        .box { background-color: #34495e; padding: 25px 15px; margin: 10px auto; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); width: 90%; max-width: 350px; box-sizing: border-box; }
+        input { padding: 12px; font-size: 16px; border-radius: 5px; border: none; width: 90%; text-align: center; margin-bottom: 10px; box-sizing: border-box; }
+        button { padding: 15px; font-size: 16px; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 95%; margin-top: 5px; touch-action: manipulation;}
         .btn-create { background-color: #e67e22; }
-        .btn-create:hover { background-color: #d35400; }
         .btn-join { background-color: #2ecc71; }
-        .btn-join:hover { background-color: #27ae60; }
         .btn-ai { background-color: #9b59b6; }
-        .btn-ai:hover { background-color: #8e44ad; }
-        .btn-rules { background-color: #3498db; width: auto; padding: 10px 20px; font-size: 16px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .btn-rules:hover { background-color: #2980b9; }
-        hr { border: 0; height: 1px; background: #5d6d7e; margin: 25px 0; }
+        .btn-rules { background-color: #3498db; width: 90%; max-width: 350px; margin-bottom: 15px; }
+        hr { border: 0; height: 1px; background: #5d6d7e; margin: 20px 0; }
+        h1 { font-size: 24px; margin-bottom: 10px; }
+        h3 { font-size: 18px; margin: 5px 0; }
+        p { font-size: 12px; }
         
-        /* ルール画面用のCSS */
         .switch-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .rules-content { text-align: left; max-width: 450px; max-height: 80vh; overflow-y: auto; background-color: #2c3e50; padding: 20px 30px; border-radius: 10px; color: #ecf0f1; line-height: 1.6; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
-        .rules-content li { margin-bottom: 10px; }
+        .rules-content { text-align: left; max-height: 70vh; overflow-y: auto; background-color: #2c3e50; padding: 20px; border-radius: 10px; color: #ecf0f1; width: 85%; max-width: 400px; }
+        .rules-content li { margin-bottom: 10px; font-size: 14px;}
         .rules-content strong { color: #f1c40f; }
     </style>
 </head>
@@ -29,66 +29,52 @@
 
     <div id="rules-modal" class="switch-overlay" style="display: none;">
         <div class="rules-content">
-            <h2 style="color: #f1c40f; text-align: center; margin-top: 0;">📜 暗殺霧チェスのルール</h2>
-            <ul>
-                <li><strong>勝利条件:</strong> 相手のキング（♔ / ♚）を取れば勝利です。</li>
-                <li><strong>視界の霧:</strong> 自分の駒と、その正面1マスしか見えません。</li>
-                <li><strong>ソナー警告:</strong> 自分が動かせる範囲に敵の駒がいると「⚠️」が表示されます。</li>
-                <li><strong>相手の行動:</strong> 相手が駒を動かすと「相手が〇〇を動かしました」と通知が出ますが、どこを動かしたかは分かりません。</li>
-                <li><strong>タイムリミット:</strong> 5ターン（両者合わせて10手）経過すると、霧が晴れてお互いのキングの位置が常に公開されます。</li>
+            <h3 style="color: #f1c40f; text-align: center; margin-top: 0;">📜 暗殺霧チェスのルール</h3>
+            <ul style="padding-left: 20px;">
+                <li><strong>勝利条件:</strong> 相手のキングを取る</li>
+                <li><strong>視界:</strong> 自分の駒とその正面1マスのみ</li>
+                <li><strong>ソナー:</strong> 攻撃範囲に敵がいると「⚠️」</li>
+                <li><strong>通知:</strong> 相手が動かした駒の種類がわかる</li>
+                <li><strong>タイムリミット:</strong> 5ターン周期で1ターンだけキングが公開される</li>
             </ul>
             <div style="text-align: center; margin-top: 20px;">
-                <button onclick="closeRules()" style="background-color: #e74c3c; width: auto;">閉じる</button>
+                <button onclick="closeRules()" style="background-color: #e74c3c; width: 100%;">閉じる</button>
             </div>
         </div>
     </div>
 
-    <h1>🌫️ 暗殺霧チェス ロビー ⚔️</h1>
-    
-    <button class="btn-rules" onclick="openRules()">📖 ゲームのルールを確認する</button>
+    <h1>🌫️ 暗殺霧チェス ロビー</h1>
+    <button class="btn-rules" onclick="openRules()">📖 ルールを確認する</button>
 
     <div class="box">
         <h3>🔑 新しく部屋を作る</h3>
-        <p style="color: #bdc3c7; font-size: 13px;">友達を誘うためのパスワードです</p>
+        <p style="color: #bdc3c7;">友達に送るパスワード</p>
         <input type="text" id="generated-id" value="{{ suggested_id }}" readonly style="background-color: #2c3e50; color: #f1c40f; font-weight: bold;">
-        <button class="btn-create" onclick="createRoom()">このパスワードで部屋を作る</button>
+        <button class="btn-create" onclick="createRoom()">部屋を作る</button>
 
         <hr>
 
         <h3>🚪 既存の部屋に入る</h3>
-        <p style="color: #bdc3c7; font-size: 13px;">友達から教えてもらったパスワードを入力</p>
-        <input type="text" id="room-input" placeholder="ここに10桁のパスワードを入力" onkeydown="if(event.key==='Enter')joinRoom()">
-        <button class="btn-join" onclick="joinRoom()">部屋に合流する</button>
+        <input type="text" id="room-input" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')joinRoom()">
+        <button class="btn-join" onclick="joinRoom()">合流する</button>
 
         <hr>
 
         <h3>🤖 1人で遊ぶ (CPU戦)</h3>
-        <p style="color: #bdc3c7; font-size: 13px;">ギリギリ負けてくれる接待AIと戦います</p>
+        <p style="color: #bdc3c7;">接待AIと練習する</p>
         <button class="btn-ai" onclick="playAI()">AIと対戦する</button>
     </div>
 
     <script>
         function openRules() { document.getElementById('rules-modal').style.display = 'flex'; }
         function closeRules() { document.getElementById('rules-modal').style.display = 'none'; }
-
-        function createRoom() {
-            const roomId = document.getElementById('generated-id').value;
-            location.href = '/room/' + encodeURIComponent(roomId);
-        }
-
+        function createRoom() { location.href = '/room/' + encodeURIComponent(document.getElementById('generated-id').value); }
         function joinRoom() {
             const roomId = document.getElementById('room-input').value.trim();
-            if (roomId) {
-                location.href = '/room/' + encodeURIComponent(roomId);
-            } else {
-                alert('パスワードを入力してください！');
-            }
+            if (roomId) location.href = '/room/' + encodeURIComponent(roomId);
+            else alert('パスワードを入力してください！');
         }
-
-        function playAI() {
-            const aiRoomId = 'AI_' + Math.random().toString(36).substr(2, 6);
-            location.href = '/room/' + encodeURIComponent(aiRoomId);
-        }
+        function playAI() { location.href = '/room/AI_' + Math.random().toString(36).substr(2, 6); }
     </script>
 </body>
 </html>

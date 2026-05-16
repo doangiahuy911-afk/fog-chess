@@ -2,63 +2,54 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <!-- 📱 これがスマホ対応の最重要コード！ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>暗殺霧チェス - 部屋: {{ room_id }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .rules-content {
-            text-align: left; max-width: 450px; max-height: 80vh; overflow-y: auto;
-            background-color: #2c3e50; padding: 20px 30px; border-radius: 10px;
-            color: #ecf0f1; line-height: 1.6; box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
+        /* 追加デザインは style.css に移したのでスッキリ！ */
+        .rules-content { text-align: left; max-height: 70vh; overflow-y: auto; color: #ecf0f1; }
         .rules-content li { margin-bottom: 10px; }
-        .rules-content strong { color: #f1c40f; }
-        .btn-rules { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-        .btn-rules:hover { background-color: #2980b9; }
-        
-        /* 🚨 警告アニメーション */
-        @keyframes alert-blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; color: #ffeb3b; }
-            100% { opacity: 1; }
-        }
-        .alert-text { color: #e74c3c; font-size: 0.85em; font-weight: bold; animation: alert-blink 1.5s infinite; display: inline-block; margin-top: 5px;}
+        .btn-rules { background-color: #3498db; color: white; width: 90%; max-width: 300px;}
+        .alert-text { color: #e74c3c; font-weight: bold; animation: alert-blink 1.5s infinite; }
+        @keyframes alert-blink { 0% { opacity: 1; } 50% { opacity: 0.5; color: #ffeb3b; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <h1>🌫️ 暗殺霧チェス オンライン ⚔️</h1>
-    <p style="color: #bdc3c7;">対戦ルーム: <strong style="color: #f1c40f; font-size: 20px;">{{ room_id }}</strong></p>
-    <p id="role-display" style="color: #2ecc71; font-weight: bold;">あなたは: 判定中...</p>
-    <h2 id="turn-display">読み込み中...</h2>
+    <p style="color: #bdc3c7; font-size: 14px;">対戦ルーム: <strong style="color: #f1c40f; font-size: 18px;">{{ room_id }}</strong></p>
+    <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 14px;">あなたは: 判定中...</p>
+    <h3 id="turn-display" style="font-size: 16px;">読み込み中...</h3>
 
-    <div id="rules-modal" class="switch-overlay" style="display: none; z-index: 1000;">
-        <div class="rules-content">
-            <h2 style="color: #f1c40f; text-align: center; margin-top: 0;">📜 暗殺霧チェスのルール</h2>
-            <ul>
-                <li><strong>勝利条件:</strong> 相手のキング（♔ / ♚）を取れば勝利です。</li>
-                <li><strong>視界の霧:</strong> 自分の駒と、その正面1マスしか見えません。</li>
-                <li><strong>ソナー警告:</strong> 自分が動かせる範囲に敵の駒がいると「⚠️」が表示されます。</li>
-                <li><strong>相手の行動:</strong> 相手が駒を動かすと「相手が〇〇を動かしました」と通知が出ますが、どこを動かしたかは分かりません。</li>
-                <li><strong>タイムリミット（新）:</strong> 5ターン周期（10手ごと）に1度だけ、霧が晴れてお互いのキングの位置が公開されます。次のターンには再び隠れます。</li>
-            </ul>
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c;">ゲームに戻る</button>
+    <div id="rules-modal" class="switch-overlay" style="display: none;">
+        <div class="switch-box" style="padding: 20px;">
+            <h3 style="color: #f1c40f; margin-top: 0;">📜 ルール</h3>
+            <div class="rules-content">
+                <ul style="padding-left: 20px; font-size: 14px;">
+                    <li><strong>勝利条件:</strong> 相手のキングを取る。</li>
+                    <li><strong>視界の霧:</strong> 自分の駒とその正面1マスのみ見える。</li>
+                    <li><strong>ソナー:</strong> 動かせる範囲に敵がいると「⚠️」表示。</li>
+                    <li><strong>通知:</strong> 相手が何を動かしたかは文字で通知される。</li>
+                    <li><strong>タイムリミット:</strong> 5ターン（10手）ごとに1度だけお互いのキングが公開される。</li>
+                </ul>
             </div>
+            <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin-top: 15px;">閉じる</button>
         </div>
     </div>
 
     <div id="online-overlay" class="switch-overlay" style="display: none;">
         <div class="switch-box">
-            <h2 id="overlay-title" style="color: #fff;">お待ちください</h2>
-            <p id="overlay-desc">相手が作戦を練っています...</p>
+            <h3 id="overlay-title" style="color: #fff;">お待ちください</h3>
+            <p id="overlay-desc" style="font-size: 14px;">相手が作戦を練っています...</p>
         </div>
     </div>
 
     <div id="switch-screen" class="switch-overlay" style="display: none;">
         <div class="switch-box">
-            <h2 id="next-player-text" style="color: #fff;"></h2>
-            <p>相手に画面が見えないように席を交代してください。</p>
-            <button class="ready-btn" onclick="confirmReady()">準備完了！盤面を表示する</button>
+            <h3 id="next-player-text" style="color: #fff;"></h3>
+            <p style="font-size: 14px;">相手に画面が見えないように席を交代してください。</p>
+            <button class="ready-btn" onclick="confirmReady()">準備完了</button>
         </div>
     </div>
 
@@ -66,9 +57,8 @@
 
     <div class="controls">
         <button class="btn-rules" onclick="openRules()">📖 ルールを確認</button><br>
-        <button onclick="resetGame()">ゲームをリセット</button>
-        <br><br>
-        <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d;">部屋を出てロビーに戻る</button>
+        <button onclick="resetGame()" style="background-color: #95a5a6; padding: 10px 15px;">リセット</button>
+        <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d; padding: 10px 15px;">退出する</button>
     </div>
 
     <script>
@@ -82,16 +72,11 @@
         function openRules() { document.getElementById('rules-modal').style.display = 'flex'; }
         function closeRules() { document.getElementById('rules-modal').style.display = 'none'; }
 
-        const pieceNames = {
-            "P": "ポーン ♟", "R": "ルーク ♜", "N": "ナイト ♞",
-            "B": "ビショップ ♝", "Q": "クイーン ♛", "K": "キング ♚"
-        };
+        const pieceNames = { "P": "ポーン ♟", "R": "ルーク ♜", "N": "ナイト ♞", "B": "ビショップ ♝", "Q": "クイーン ♛", "K": "キング ♚" };
 
         async function joinRoom() {
             const response = await fetch(`/join_room_backend/${roomId}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ player_id: playerId })
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
             });
             const data = await response.json();
             if (data.status === 'full') {
@@ -101,19 +86,15 @@
                 return false;
             }
             myColor = data.color;
-            let roleText = `あなたは 【 ${myColor === 'W' ? '白（先攻）' : '黒（後攻）'} 】 陣営です`;
-            if (roomId.startsWith('AI_')) {
-                roleText = "あなたは 【 白 】 陣営です (vs 接待AI)";
-            }
-            document.getElementById('role-display').innerText = roleText;
+            let roleText = `【 ${myColor === 'W' ? '白（先攻）' : '黒（後攻）'} 】 陣営`;
+            if (roomId.startsWith('AI_')) roleText = "【 白 】 陣営 (vs AI)";
+            document.getElementById('role-display').innerText = `あなたは: ${roleText}`;
             return true;
         }
 
         async function updateBoard() {
             const response = await fetch(`/get_game/${roomId}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ player_id: playerId })
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
             });
             const data = await response.json();
             
@@ -130,26 +111,22 @@
             container.innerHTML = '';
             
             if (data.winner) {
-                document.getElementById('turn-display').innerText = `🎉 勝負あり！ ${data.winner} の勝ちです！ 🎉`;
-                switchScreen.style.display = 'none';
-                onlineOverlay.style.display = 'none';
+                document.getElementById('turn-display').innerText = `🎉 勝負あり！ ${data.winner} の勝ち！`;
+                switchScreen.style.display = 'none'; onlineOverlay.style.display = 'none';
             } else {
-                let turnText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターンです`;
-                
+                let turnText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターン`;
                 if (data.last_moved_piece) {
                     const pType = data.last_moved_piece[1]; 
-                    turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">🔍 相手は 【 ${pieceNames[pType]} 】 を動かしました！</span>`;
+                    turnText += `<br><span style="color: #34db98; font-size: 0.85em;">🔍 相手が 【 ${pieceNames[pType]} 】 を動かしました</span>`;
                 }
 
-                // 🔄 周期的なキング公開システム
                 let currentRound = Math.floor(data.turn_count / 2);
                 if (currentRound > 0 && currentRound % 5 === 0) {
-                    turnText += ` <br><span class="alert-text">⚠️ 索敵完了：お互いのキングが丸見えです！（次ターンで再び隠れます）</span>`;
+                    turnText += ` <br><span class="alert-text">⚠️ キング公開中！（次ターンで隠れます）</span>`;
                 } else {
                     let turnsLeft = 5 - (currentRound % 5);
                     turnText += ` <br><span style="color: #f39c12; font-size: 0.8em;">キング公開まで あと ${turnsLeft} ターン</span>`;
                 }
-                
                 document.getElementById('turn-display').innerHTML = turnText;
             }
 
@@ -160,20 +137,13 @@
                 if (data.switching_turn) {
                     document.getElementById('next-player-text').innerText = `次は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 の番です`;
                     switchScreen.style.display = 'flex';
-                } else {
-                    switchScreen.style.display = 'none';
-                }
+                } else { switchScreen.style.display = 'none'; }
             } else {
                 switchScreen.style.display = 'none';
                 if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
-                    document.getElementById('overlay-title').innerText = "相手のターンです";
-                    document.getElementById('overlay-desc').innerText = "少々お待ちください。相手が作戦を練っています...";
                     onlineOverlay.style.display = 'flex';
-                } else {
-                    onlineOverlay.style.display = 'none';
-                }
+                } else { onlineOverlay.style.display = 'none'; }
             }
-
             drawBoard(data);
         }
 
@@ -183,37 +153,19 @@
                 for (let c = 0; c < 8; c++) {
                     const square = document.createElement('div');
                     square.classList.add('square');
-                    
-                    if ((r + c) % 2 === 1) { square.classList.add('light-square'); } 
-                    else { square.classList.add('dark-square'); }
+                    if ((r + c) % 2 === 1) square.classList.add('light-square'); else square.classList.add('dark-square');
                     
                     const cell = data.visible_board[r][c];
-                    if (cell === 'fog') {
-                        square.classList.add('fog-square');
-                    } else if (cell === 'sonar') {
-                        square.classList.add('sonar-square');
-                        square.innerText = '⚠️';
-                    } else if (cell !== 'empty') {
-                        const icons = {
-                            "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
-                            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚"
-                        };
+                    if (cell === 'fog') square.classList.add('fog-square');
+                    else if (cell === 'sonar') { square.classList.add('sonar-square'); square.innerText = '⚠️'; }
+                    else if (cell !== 'empty') {
+                        const icons = { "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
+                                        "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚" };
                         square.innerText = icons[cell] || '';
                     }
                     
-                    // 💡 ハイライト消失バグの修正：JavaScriptから直接CSS（緑の光）を当てる
-                    const isMovable = data.valid_moves.some(move => move[0] === r && move[1] === c);
-                    if (isMovable) {
-                        square.classList.remove('fog-square');
-                        square.style.backgroundColor = 'rgba(46, 204, 113, 0.4)'; 
-                        square.style.boxShadow = 'inset 0 0 10px #2ecc71';
-                        square.style.cursor = 'pointer';
-                    }
-
-                    if (data.selected && data.selected[0] === r && data.selected[1] === c) {
-                        square.style.border = '3px solid #e74c3c';
-                        square.style.boxSizing = 'border-box';
-                    }
+                    if (data.valid_moves.some(move => move[0] === r && move[1] === c)) square.classList.add('highlight-square');
+                    if (data.selected && data.selected[0] === r && data.selected[1] === c) square.style.border = '3px solid #e74c3c';
 
                     square.onclick = () => clickSquare(r, c);
                     container.appendChild(square);
@@ -222,39 +174,17 @@
         }
 
         async function clickSquare(r, c) {
-            await fetch(`/click_square/${roomId}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ r, c, player_id: playerId })
-            });
+            await fetch(`/click_square/${roomId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ r, c, player_id: playerId }) });
             updateBoard();
         }
-
-        async function confirmReady() {
-            await fetch(`/ready_next_turn/${roomId}`, { method: 'POST' });
-            updateBoard();
-        }
-
-        async function resetGame() {
-            await fetch(`/reset/${roomId}`, { method: 'POST' });
-            updateBoard();
-        }
-
+        async function confirmReady() { await fetch(`/ready_next_turn/${roomId}`, { method: 'POST' }); updateBoard(); }
+        async function resetGame() { await fetch(`/reset/${roomId}`, { method: 'POST' }); updateBoard(); }
         async function leaveAndGoLobby() {
-            await fetch(`/leave_room/${roomId}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ player_id: playerId })
-            });
+            await fetch(`/leave_room/${roomId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId }) });
             location.href = '/';
         }
 
-        joinRoom().then(success => {
-            if (success) {
-                setInterval(updateBoard, 1000);
-                updateBoard();
-            }
-        });
+        joinRoom().then(success => { if (success) { setInterval(updateBoard, 1000); updateBoard(); } });
     </script>
 </body>
 </html>
