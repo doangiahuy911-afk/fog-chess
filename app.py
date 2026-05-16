@@ -37,7 +37,6 @@ def get_or_create_room(room_id):
         }
     return game_rooms[room_id]
 
-# 指定したマス（r, c）から移動・攻撃できるマスのリストを返す関数
 def get_valid_moves(room_id, r, c):
     room = get_or_create_room(room_id)
     board = room["board"]
@@ -90,10 +89,8 @@ def get_valid_moves(room_id, r, c):
                 nc += dc
     return moves
 
-# プレイヤーの画面に送る「視界データ」を作る関数
 def get_visible_board(room_id, player_color):
     room = get_or_create_room(room_id)
-    # 1人プレイで相手に席を交代する間の画面隠し
     if len(room["players"]) <= 1 and room["switching_turn"]:
         return [["fog" for _ in range(8)] for _ in range(8)]
     
@@ -101,36 +98,27 @@ def get_visible_board(room_id, player_color):
     turn = player_color if player_color in ["W", "B"] else room["current_turn"]
     visible = [["fog" for _ in range(8)] for _ in range(8)]
     
-    # 🌟 変更点：すべての自分の駒をチェックして、常時ソナーを発動させる
     for r in range(8):
         for c in range(8):
             piece = board[r][c]
             if piece.startswith(turn):
-                # 1. 自分の駒を表示
                 visible[r][c] = piece
-                
-                # 2. 正面1マスの霧を晴らす
                 direction = -1 if turn == "W" else 1
                 if 0 <= r + direction < 8:
                     front = board[r + direction][c]
-                    # もし正面に敵がいても、あとでソナーが上書きするのでここでは普通に表示
                     visible[r + direction][c] = "empty" if front == "--" else front
                 
-                # 3. 🚨 常時発動ソナー：この駒が攻撃できる範囲に敵がいるかチェック
                 valid_moves = get_valid_moves(room_id, r, c)
                 for mr, mc in valid_moves:
                     target = board[mr][mc]
-                    # 移動先に「敵の駒」がいたら、そのマスをソナー警告(⚠️)にする
                     if target != "--" and not target.startswith(turn):
                         visible[mr][mc] = "sonar"
 
-    # 👁️ 5ターン（10手）周期で、1ターンだけキングを強制表示する
     current_round = room["turn_count"] // 2
     if current_round > 0 and current_round % 5 == 0:
         for r in range(8):
             for c in range(8):
                 if board[r][c] in ["WK", "BK"]:
-                    # キングがいる場所は、霧の上からでも強制的に書き換える
                     visible[r][c] = board[r][c] 
 
     return visible
@@ -250,7 +238,12 @@ def click_square(room_id):
         
         room["selected_pos"] = None
         room["current_turn"] = "B" if turn == "W" else "W"
-        room["switching_turn"] = True 
+        
+        # 🌟 超重要修正：オンライン通信対戦（2人）の時は、交代スイッチを絶対にONにしない！
+        if len(room["players"]) == 1 and not room_id.startswith("AI_"):
+            room["switching_turn"] = True 
+        else:
+            room["switching_turn"] = False
         
         room["last_moved_piece"] = moving_piece
         room["turn_count"] += 1
