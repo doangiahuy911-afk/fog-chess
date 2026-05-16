@@ -105,7 +105,8 @@
         }
 
         const pieceNames = { "P": "ポーン ♟", "R": "ルーク ♜", "N": "ナイト ♞", "B": "ビショップ ♝", "Q": "クイーン ♛", "K": "キング ♚" };
-        const icons = { "WP":"♙", "WR":"♜", "WN":"♞", "WB":"♝", "WQ":"♛", "WK":"♚", "BP":"♟", "BR":"♖", "BN":"♘", "BB":"♗", "BQ":"♕", "BK":"♔" };
+        const icons = { "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
+                            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚"};
 
         async function joinRoom() {
             const response = await fetch(`/join_room_backend/${roomId}`, {
