@@ -17,12 +17,14 @@ h1 {
 #chess-container {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr); /* 🌟 修正：縦も絶対に8等分する！ */
     width: 95vw;          /* 画面幅の95%を使う */
     max-width: 500px;     /* PCで見るときは最大500pxまで */
     aspect-ratio: 1 / 1;  /* 絶対に正方形を維持する */
     margin: 15px auto;
     border: 4px solid #34495e;
     border-radius: 5px;
+    background-color: #34495e;
     
     /* ⚡ これがもっさり感をなくす魔法のコード！ */
     touch-action: manipulation;
@@ -37,6 +39,7 @@ h1 {
     align-items: center;
     font-size: 7vw; /* 駒のサイズも画面に合わせて可変 */
     cursor: pointer;
+    box-sizing: border-box; /* 🌟 修正：選択時の赤い枠線で盤面がズレないようにする */
     /* タップした時の青い謎のハイライトを消す */
     -webkit-tap-highlight-color: transparent;
 }
@@ -67,7 +70,6 @@ button {
     border: none;
     font-weight: bold;
     cursor: pointer;
-    /* ボタンも爆速反応に */
     touch-action: manipulation; 
 }
 
