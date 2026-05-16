@@ -2,64 +2,92 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- 📱 これがスマホ対応の最重要コード！ -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>暗殺霧チェス - 部屋: {{ room_id }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* 追加デザインは style.css に移したのでスッキリ！ */
-        .rules-content { text-align: left; max-height: 70vh; overflow-y: auto; color: #ecf0f1; }
-        .rules-content li { margin-bottom: 10px; }
-        .btn-rules { background-color: #3498db; color: white; width: 90%; max-width: 300px;}
+        .rules-content { text-align: left; max-height: 60vh; overflow-y: auto; color: #ecf0f1; }
+        .rules-content li { margin-bottom: 12px; }
         .alert-text { color: #e74c3c; font-weight: bold; animation: alert-blink 1.5s infinite; }
         @keyframes alert-blink { 0% { opacity: 1; } 50% { opacity: 0.5; color: #ffeb3b; } 100% { opacity: 1; } }
+        
+        /* 🌟 ターン情報を強調する見やすいボックス */
+        .turn-box { 
+            background: #233140; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            border-left: 5px solid #f1c40f; 
+        }
     </style>
 </head>
 <body>
 
-    <h1>🌫️ 暗殺霧チェス オンライン ⚔️</h1>
-    <p style="color: #bdc3c7; font-size: 14px;">対戦ルーム: <strong style="color: #f1c40f; font-size: 18px;">{{ room_id }}</strong></p>
-    <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 14px;">あなたは: 判定中...</p>
-    <h3 id="turn-display" style="font-size: 16px;">読み込み中...</h3>
-
+    <!-- 📖 ルールブック -->
     <div id="rules-modal" class="switch-overlay" style="display: none;">
         <div class="switch-box" style="padding: 20px;">
             <h3 style="color: #f1c40f; margin-top: 0;">📜 ルール</h3>
             <div class="rules-content">
-                <ul style="padding-left: 20px; font-size: 14px;">
+                <ul style="padding-left: 20px; font-size: 14px; line-height: 1.5;">
                     <li><strong>勝利条件:</strong> 相手のキングを取る。</li>
                     <li><strong>視界の霧:</strong> 自分の駒とその正面1マスのみ見える。</li>
                     <li><strong>ソナー:</strong> 動かせる範囲に敵がいると「⚠️」表示。</li>
-                    <li><strong>通知:</strong> 相手が何を動かしたかは文字で通知される。</li>
-                    <li><strong>タイムリミット:</strong> 5ターン（10手）ごとに1度だけお互いのキングが公開される。</li>
+                    <li><strong>通知:</strong> 相手が何を動かしたかは文字で通知される（場所は非公開）。</li>
+                    <li><strong>タイムリミット:</strong> 5ターン（10手）ごとに1度だけお互いのキングが公開される（次ターンで再び隠れる）。</li>
                 </ul>
             </div>
-            <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin-top: 15px;">閉じる</button>
+            <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin-top: 15px;">ゲームに戻る</button>
         </div>
     </div>
 
+    <!-- 待機＆交代画面 -->
     <div id="online-overlay" class="switch-overlay" style="display: none;">
         <div class="switch-box">
             <h3 id="overlay-title" style="color: #fff;">お待ちください</h3>
-            <p id="overlay-desc" style="font-size: 14px;">相手が作戦を練っています...</p>
+            <p id="overlay-desc" style="font-size: 14px; color: #bdc3c7;">相手が作戦を練っています...</p>
         </div>
     </div>
 
     <div id="switch-screen" class="switch-overlay" style="display: none;">
         <div class="switch-box">
             <h3 id="next-player-text" style="color: #fff;"></h3>
-            <p style="font-size: 14px;">相手に画面が見えないように席を交代してください。</p>
-            <button class="ready-btn" onclick="confirmReady()">準備完了</button>
+            <p style="font-size: 14px; color: #bdc3c7;">相手に画面が見えないように席を交代してください。</p>
+            <button class="ready-btn" onclick="confirmReady()">準備完了！</button>
         </div>
     </div>
 
-    <div id="chess-container"></div>
+    <!-- 🌟 新レイアウト：ここから -->
+    <div class="game-layout">
 
-    <div class="controls">
-        <button class="btn-rules" onclick="openRules()">📖 ルールを確認</button><br>
-        <button onclick="resetGame()" style="background-color: #95a5a6; padding: 10px 15px;">リセット</button>
-        <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d; padding: 10px 15px;">退出する</button>
+        <!-- 左側（スマホでは下）：チェス盤 -->
+        <div class="board-wrapper">
+            <div id="chess-container"></div>
+        </div>
+
+        <!-- 右側（スマホでは上）：情報コントロールパネル -->
+        <div class="side-panel">
+            <h1 style="margin-bottom: 5px;">🌫️ 暗殺霧チェス</h1>
+            <p style="color: #bdc3c7; font-size: 14px; margin-top: 0;">ルーム: <strong style="color: #f1c40f; font-size: 18px; letter-spacing: 1px;">{{ room_id }}</strong></p>
+            
+            <hr style="border: 0; height: 1px; background: #5d6d7e; margin: 15px 0;">
+
+            <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 16px; margin-bottom: 8px;">あなたは: 判定中...</p>
+            
+            <div class="turn-box">
+                <h3 id="turn-display" style="font-size: 15px; margin: 0; line-height: 1.6;">読み込み中...</h3>
+            </div>
+
+            <div class="controls" style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn-rules" onclick="openRules()">📖 ルールを確認</button>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="resetGame()" style="background-color: #95a5a6; flex: 1;">リセット</button>
+                    <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d; flex: 1;">退出する</button>
+                </div>
+            </div>
+        </div>
+
     </div>
+    <!-- 🌟 新レイアウト：ここまで -->
 
     <script>
         const roomId = "{{ room_id }}";
@@ -81,7 +109,7 @@
             const data = await response.json();
             if (data.status === 'full') {
                 document.getElementById('overlay-title').innerText = "満員です";
-                document.getElementById('overlay-desc').innerText = "この部屋はすでに2人のプレイヤーで対戦中です。";
+                document.getElementById('overlay-desc').innerText = "この部屋はすでに2人で対戦中です。";
                 document.getElementById('online-overlay').style.display = 'flex';
                 return false;
             }
@@ -117,7 +145,7 @@
                 let turnText = `現在は 【 ${data.current_turn === 'W' ? '白' : '黒'} 】 のターン`;
                 if (data.last_moved_piece) {
                     const pType = data.last_moved_piece[1]; 
-                    turnText += `<br><span style="color: #34db98; font-size: 0.85em;">🔍 相手が 【 ${pieceNames[pType]} 】 を動かしました</span>`;
+                    turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">🔍 相手が 【 ${pieceNames[pType]} 】 を動かしました</span>`;
                 }
 
                 let currentRound = Math.floor(data.turn_count / 2);
@@ -125,7 +153,7 @@
                     turnText += ` <br><span class="alert-text">⚠️ キング公開中！（次ターンで隠れます）</span>`;
                 } else {
                     let turnsLeft = 5 - (currentRound % 5);
-                    turnText += ` <br><span style="color: #f39c12; font-size: 0.8em;">キング公開まで あと ${turnsLeft} ターン</span>`;
+                    turnText += ` <br><span style="color: #f39c12; font-size: 0.8em; display: inline-block; margin-top: 3px;">キング公開まで あと ${turnsLeft} ターン</span>`;
                 }
                 document.getElementById('turn-display').innerHTML = turnText;
             }
@@ -164,8 +192,17 @@
                         square.innerText = icons[cell] || '';
                     }
                     
-                    if (data.valid_moves.some(move => move[0] === r && move[1] === c)) square.classList.add('highlight-square');
-                    if (data.selected && data.selected[0] === r && data.selected[1] === c) square.style.border = '3px solid #e74c3c';
+                    const isMovable = data.valid_moves.some(move => move[0] === r && move[1] === c);
+                    if (isMovable) {
+                        square.classList.remove('fog-square');
+                        square.style.backgroundColor = 'rgba(46, 204, 113, 0.4)'; 
+                        square.style.boxShadow = 'inset 0 0 10px #2ecc71';
+                        square.style.cursor = 'pointer';
+                    }
+
+                    if (data.selected && data.selected[0] === r && data.selected[1] === c) {
+                        square.style.border = '3px solid #e74c3c';
+                    }
 
                     square.onclick = () => clickSquare(r, c);
                     container.appendChild(square);
