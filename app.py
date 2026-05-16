@@ -33,13 +33,15 @@ def get_or_create_room(room_id):
             "switching_turn": False,
             "players": [],
             "turn_count": 0,
-            "last_moved_piece": None
+            "last_moved_piece": None,
+            "captured_by_W": [], 
+            "captured_by_B": [],
+            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)]
         }
     return game_rooms[room_id]
 
-def get_valid_moves(room_id, r, c):
-    room = get_or_create_room(room_id)
-    board = room["board"]
+# 駒の「物理的な移動可能範囲」を返す（自殺手も含む生のデータ）
+def get_valid_moves_for_board(board, r, c):
     piece = board[r][c]
     if piece == "--": return []
     color = piece[0]
@@ -89,12 +91,69 @@ def get_valid_moves(room_id, r, c):
                 nc += dc
     return moves
 
+# キングが敵の攻撃範囲（王手）に入っているかチェックする
+def is_in_check_board(board, color):
+    king_piece = "WK" if color == "W" else "BK"
+    king_pos = None
+    
+    for r in range(8):
+        for c in range(8):
+            if board[r][c] == king_piece:
+                king_pos = [r, c]
+                break
+        if king_pos: break
+        
+    if not king_pos: return False 
+    
+    enemy_color = "B" if color == "W" else "W"
+    for r in range(8):
+        for c in range(8):
+            if board[r][c].startswith(enemy_color):
+                moves = get_valid_moves_for_board(board, r, c)
+                if king_pos in moves:
+                    return True
+    return False
+
+# 🌟 重要な新機能：キングが自殺しない「安全な（合法な）移動」だけを返す
+def get_legal_moves_for_board(board, r, c):
+    piece = board[r][c]
+    if piece == "--": return []
+    color = piece[0]
+    pseudo_moves = get_valid_moves_for_board(board, r, c)
+    legal_moves = []
+    
+    for mr, mc in pseudo_moves:
+        # 試しに脳内で駒を動かしてみる
+        captured = board[mr][mc]
+        board[mr][mc] = piece
+        board[r][c] = "--"
+        
+        # 動かした結果、自分のキングが死んでいなければOK！
+        if not is_in_check_board(board, color):
+            legal_moves.append([mr, mc])
+            
+        # 脳内で動かした駒を元に戻す
+        board[r][c] = piece
+        board[mr][mc] = captured
+        
+    return legal_moves
+
 def get_visible_board(room_id, player_color):
     room = get_or_create_room(room_id)
+    board = room["board"]
+    
+    if room["winner"]:
+        visible = []
+        for r in range(8):
+            row = []
+            for c in range(8):
+                row.append("empty" if board[r][c] == "--" else board[r][c])
+            visible.append(row)
+        return visible
+
     if len(room["players"]) <= 1 and room["switching_turn"]:
         return [["fog" for _ in range(8)] for _ in range(8)]
     
-    board = room["board"]
     turn = player_color if player_color in ["W", "B"] else room["current_turn"]
     visible = [["fog" for _ in range(8)] for _ in range(8)]
     
@@ -108,7 +167,8 @@ def get_visible_board(room_id, player_color):
                     front = board[r + direction][c]
                     visible[r + direction][c] = "empty" if front == "--" else front
                 
-                valid_moves = get_valid_moves(room_id, r, c)
+                # ソナーは「相手を攻撃できる場所」なので生のデータ（自殺手含む）で探知
+                valid_moves = get_valid_moves_for_board(board, r, c)
                 for mr, mc in valid_moves:
                     target = board[mr][mc]
                     if target != "--" and not target.startswith(turn):
@@ -122,6 +182,111 @@ def get_visible_board(room_id, player_color):
                     visible[r][c] = board[r][c] 
 
     return visible
+
+# --- AI Level 3 Engines ---
+# 計算を軽くするため、AIの未来シミュレーション内では生の移動データを使う
+def get_all_pseudo_moves(board, color):
+    moves = []
+    for r in range(8):
+        for c in range(8):
+            if board[r][c].startswith(color):
+                valid_destinations = get_valid_moves_for_board(board, r, c)
+                for dr, dc in valid_destinations:
+                    moves.append((r, c, dr, dc))
+    
+    def move_priority(m):
+        tr, tc = m[2], m[3]
+        target = board[tr][tc]
+        if target != "--":
+            if target[1] == "K": return 100
+            elif target[1] == "Q": return 90
+            elif target[1] == "R": return 50
+            return 10
+        return 0
+        
+    moves.sort(key=move_priority, reverse=True)
+    return moves
+
+def evaluate_board(board):
+    piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90, "K": 10000}
+    score = 0
+    wk_alive = False
+    bk_alive = False
+
+    for r in range(8):
+        for c in range(8):
+            piece = board[r][c]
+            if piece != "--":
+                if piece == "WK": wk_alive = True
+                if piece == "BK": bk_alive = True
+                
+                val = piece_values.get(piece[1], 0)
+                if piece.startswith("B"):
+                    score += val
+                    if piece[1] == "P": score += r 
+                else:
+                    score -= val
+
+    if not wk_alive: return 99999  
+    if not bk_alive: return -99999 
+    
+    return score
+
+def minimax(board, depth, alpha, beta, is_maximizing):
+    eval_score = evaluate_board(board)
+    if abs(eval_score) >= 90000 or depth == 0:
+        return eval_score
+        
+    if is_maximizing: 
+        max_eval = -float('inf')
+        moves = get_all_pseudo_moves(board, "B")
+        if not moves: return eval_score
+        
+        for move in moves:
+            r, c, mr, mc = move
+            captured = board[mr][mc]
+            board[mr][mc] = board[r][c]
+            board[r][c] = "--"
+            promoted = False
+            if board[mr][mc] == "BP" and mr == 7:
+                board[mr][mc] = "BQ"
+                promoted = True
+                
+            eval = minimax(board, depth - 1, alpha, beta, False)
+            
+            board[r][c] = "BP" if promoted else board[mr][mc]
+            board[mr][mc] = captured
+            
+            max_eval = max(max_eval, eval)
+            alpha = max(alpha, eval)
+            if beta <= alpha: break 
+        return max_eval
+        
+    else:
+        min_eval = float('inf')
+        moves = get_all_pseudo_moves(board, "W")
+        if not moves: return eval_score
+        
+        for move in moves:
+            r, c, mr, mc = move
+            captured = board[mr][mc]
+            board[mr][mc] = board[r][c]
+            board[r][c] = "--"
+            promoted = False
+            if board[mr][mc] == "WP" and mr == 0:
+                board[mr][mc] = "WQ"
+                promoted = True
+                
+            eval = minimax(board, depth - 1, alpha, beta, True)
+            
+            board[r][c] = "WP" if promoted else board[mr][mc]
+            board[mr][mc] = captured
+            
+            min_eval = min(min_eval, eval)
+            beta = min(beta, eval)
+            if beta <= alpha: break 
+        return min_eval
+# --------------------------
 
 @app.route('/')
 def lobby():
@@ -174,7 +339,8 @@ def get_game(room_id):
     valid_moves = []
     if room["selected_pos"] and room["current_turn"] == player_color and not room["switching_turn"]:
         sr, sc = room["selected_pos"]
-        valid_moves = get_valid_moves(room_id, sr, sc)
+        # 🌟 画面に送る緑色のハイライトを「安全な手」のみに制限！
+        valid_moves = get_legal_moves_for_board(room["board"], sr, sc)
         
     return jsonify({
         "visible_board": get_visible_board(room_id, player_color),
@@ -186,7 +352,10 @@ def get_game(room_id):
         "player_color": player_color,
         "player_count": len(room["players"]),
         "turn_count": room["turn_count"],
-        "last_moved_piece": room["last_moved_piece"]
+        "last_moved_piece": room["last_moved_piece"],
+        "is_check": is_in_check_board(room["board"], player_color) if player_color in ["W", "B"] else False,
+        "captured_by_W": room["captured_by_W"], 
+        "captured_by_B": room["captured_by_B"]  
     })
 
 @app.route('/click_square/<room_id>', methods=['POST'])
@@ -224,11 +393,17 @@ def click_square(room_id):
             room["selected_pos"] = [r, c]
             return jsonify({"status": "re_selected"})
             
-        valid_moves = get_valid_moves(room_id, sr, sc)
+        # 🌟 ここでもクリックされた移動先が「安全か」をチェック
+        valid_moves = get_legal_moves_for_board(board, sr, sc)
         if [r, c] not in valid_moves: return jsonify({"status": "invalid_move"})
         
         target_piece = board[r][c]
         moving_piece = board[sr][sc]
+        
+        if target_piece != "--" and target_piece not in ["WK", "BK"]:
+            if turn == "W": room["captured_by_W"].append(target_piece)
+            else: room["captured_by_B"].append(target_piece)
+            
         if target_piece in ["WK", "BK"]: room["winner"] = "白" if turn == "W" else "黒"
         
         board[r][c] = moving_piece
@@ -239,7 +414,15 @@ def click_square(room_id):
         room["selected_pos"] = None
         room["current_turn"] = "B" if turn == "W" else "W"
         
-        # 🌟 超重要修正：オンライン通信対戦（2人）の時は、交代スイッチを絶対にONにしない！
+        if turn == "W":
+            room["ai_heatmap"][r][c] += 50.0  
+            room["ai_heatmap"][sr][sc] += 20.0 
+            for dr in [-1, 0, 1]:
+                for dc in [-1, 0, 1]:
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < 8 and 0 <= nc < 8 and (dr != 0 or dc != 0):
+                        room["ai_heatmap"][nr][nc] += 10.0
+
         if len(room["players"]) == 1 and not room_id.startswith("AI_"):
             room["switching_turn"] = True 
         else:
@@ -257,43 +440,127 @@ def ai_move(room_id):
         return jsonify({"status": "not_ai_turn"})
 
     board = room["board"]
-    possible_moves = []
-    
-    for r in range(8):
-        for c in range(8):
-            if board[r][c].startswith("B"):
-                moves = get_valid_moves(room_id, r, c)
-                for mr, mc in moves:
-                    target = board[mr][mc]
-                    score = random.randint(0, 5) 
-                    if target != "--" and target.startswith("W"):
-                        score += 20 
-                        if target == "WK": score = -1000 
-                    if random.random() < 0.2: score -= 15 
-                    possible_moves.append((score, r, c, mr, mc))
+    heatmap = room["ai_heatmap"]
+    chosen = None
 
-    if not possible_moves: return jsonify({"status": "no_moves"})
+    if "_1_" in room_id:
+        possible_moves = []
+        for r in range(8):
+            for c in range(8):
+                if board[r][c].startswith("B"):
+                    # 🌟 レベル1でも自殺しないようにする
+                    moves = get_legal_moves_for_board(board, r, c)
+                    for mr, mc in moves:
+                        target = board[mr][mc]
+                        score = random.randint(0, 5)
+                        if target != "--" and target.startswith("W"):
+                            score += 20
+                            if target == "WK": score = -1000 
+                        if random.random() < 0.2: score -= 15
+                        possible_moves.append((score, r, c, mr, mc))
+        if possible_moves:
+            possible_moves.sort(reverse=True, key=lambda x: x[0])
+            top_moves = possible_moves[:min(3, len(possible_moves))] 
+            chosen = random.choice(top_moves)
 
-    valid_moves = [m for m in possible_moves if m[0] > -500]
-    if not valid_moves: valid_moves = possible_moves
+    elif "_2_" in room_id:
+        possible_moves = []
+        piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90}
+        for r in range(8):
+            for c in range(8):
+                if board[r][c].startswith("B"):
+                    # 🌟 レベル2でも自殺しないようにする
+                    moves = get_legal_moves_for_board(board, r, c)
+                    p_type = board[r][c][1]
+                    for mr, mc in moves:
+                        target = board[mr][mc]
+                        score = random.randint(0, 5) 
+                        if target != "--" and target.startswith("W"):
+                            target_type = target[1]
+                            if target == "WK": score += 100000 
+                            else: score += piece_values.get(target_type, 10) * 10
+                        target_heat = heatmap[mr][mc]
+                        if p_type == "K": score -= target_heat * 2
+                        else: score += target_heat * 0.8
+                        if p_type == "P": score += (mr - r) * 2 
+                        if is_in_check_board(board, "B") and p_type == "K": score += 500 
+                        possible_moves.append((score, r, c, mr, mc))
+        if possible_moves:
+            possible_moves.sort(reverse=True, key=lambda x: x[0])
+            best_score = possible_moves[0][0]
+            top_moves = [m for m in possible_moves if m[0] >= best_score - 10]
+            chosen = random.choice(top_moves)
 
-    valid_moves.sort(reverse=True, key=lambda x: x[0])
-    top_moves = valid_moves[:min(3, len(valid_moves))] 
-    chosen = random.choice(top_moves)
+    else: 
+        best_score = -float('inf')
+        best_moves = []
+        alpha = -float('inf')
+        beta = float('inf')
+        
+        all_moves = []
+        for r in range(8):
+            for c in range(8):
+                if board[r][c].startswith("B"):
+                    # 🌟 レベル3の「最初の一歩」は必ず合法手の中から選ぶ
+                    for mr, mc in get_legal_moves_for_board(board, r, c):
+                        all_moves.append((r, c, mr, mc))
+        
+        SEARCH_DEPTH = 3 
+        
+        if all_moves:
+            for move in all_moves:
+                r, c, mr, mc = move
+                captured = board[mr][mc]
+                moving_piece = board[r][c]
+                board[mr][mc] = moving_piece
+                board[r][c] = "--"
+                promoted = False
+                if board[mr][mc] == "BP" and mr == 7:
+                    board[mr][mc] = "BQ"
+                    promoted = True
+                    
+                score = minimax(board, SEARCH_DEPTH - 1, alpha, beta, False)
+                score += heatmap[mr][mc] * 0.5 
+                
+                board[r][c] = "BP" if promoted else board[mr][mc]
+                board[mr][mc] = captured
+                
+                score += random.uniform(0, 2)
+                
+                if score > best_score:
+                    best_score = score
+                    best_moves = [move]
+                elif score == best_score:
+                    best_moves.append(move)
+                alpha = max(alpha, score)
+            
+            if best_moves:
+                move = random.choice(best_moves)
+                chosen = (0, move[0], move[1], move[2], move[3])
+
+    if not chosen: 
+        room["winner"] = "白"
+        return jsonify({"status": "no_moves"})
 
     score, sr, sc, tr, tc = chosen
-
     target_piece = board[tr][tc]
     moving_piece = board[sr][sc]
+    
+    if target_piece != "--" and target_piece not in ["WK", "BK"]:
+        room["captured_by_B"].append(target_piece)
+        
     if target_piece == "WK": room["winner"] = "黒（AI）"
         
     board[tr][tc] = moving_piece
     board[sr][sc] = "--"
     if moving_piece == "BP" and tr == 7: board[tr][tc] = "BQ"
 
+    for i in range(8):
+        for j in range(8):
+            room["ai_heatmap"][i][j] *= 0.7 
+
     room["current_turn"] = "W"
     room["switching_turn"] = False
-    
     room["last_moved_piece"] = moving_piece
     room["turn_count"] += 1
     
@@ -311,7 +578,8 @@ def reset(room_id):
         players = game_rooms[room_id]["players"]
         game_rooms[room_id] = {
             "board": reset_board(), "current_turn": "W", "selected_pos": None, "winner": None, "switching_turn": False, "players": players,
-            "turn_count": 0, "last_moved_piece": None 
+            "turn_count": 0, "last_moved_piece": None, "captured_by_W": [], "captured_by_B": [],
+            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)]
         }
     return jsonify({"status": "reset"})
 

@@ -1,149 +1,80 @@
 /* -----------------------------------
    ベース設定
 ----------------------------------- */
-body {
-    background-color: #2c3e50;
-    color: white;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    text-align: center;
-    margin: 0;
-    padding: 0;
-    touch-action: pan-y;
-}
-
-/* 🌟 レイアウトの枠組み（スマホ＝縦、PC＝横） */
-.game-layout {
-    display: flex;
-    /* スマホ時は情報パネルが上、盤面が下になるように逆順（column-reverse）で縦並び */
-    flex-direction: column-reverse; 
-    align-items: center;
-    gap: 20px;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 20px 10px;
-}
-
-.board-wrapper {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    width: 100%;
-}
-
-/* 📱 情報パネル（右側 or 上部）のデザイン */
-.side-panel {
-    width: 95%;
-    max-width: 500px;
-    background: #34495e;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-    box-sizing: border-box;
-}
-
-h1 {
-    font-size: 6vw;
-    margin-top: 0;
-}
+body { background-color: #2c3e50; color: white; font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; margin: 0; padding: 0; touch-action: pan-y; }
+.game-layout { display: flex; flex-direction: column-reverse; align-items: center; gap: 20px; max-width: 1100px; margin: 0 auto; padding: 20px 10px; }
+.board-wrapper { flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; position: relative; }
+.side-panel { width: 95%; max-width: 500px; background: #34495e; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); box-sizing: border-box; }
+h1 { font-size: 6vw; margin-top: 0; }
 
 /* -----------------------------------
    チェス盤のデザイン
 ----------------------------------- */
-#chess-container {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
-    width: 95vw;
-    max-width: 500px;
-    aspect-ratio: 1 / 1;
-    border: 4px solid #34495e;
-    border-radius: 8px;
-    background-color: #34495e;
-    touch-action: manipulation;
-    -webkit-user-select: none;
-    user-select: none;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-}
-
-.square {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 7vw;
-    cursor: pointer;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* 色の設定 */
+#chess-container { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 95vw; max-width: 500px; aspect-ratio: 1 / 1; border: 4px solid #34495e; border-radius: 8px; background-color: #34495e; touch-action: manipulation; -webkit-user-select: none; user-select: none; box-shadow: 0 8px 25px rgba(0,0,0,0.6); }
+.square { display: flex; justify-content: center; align-items: center; font-size: 7vw; cursor: pointer; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .light-square { background-color: #ecf0f1; color: #2c3e50; }
 .dark-square { background-color: #95a5a6; color: #2c3e50; }
 .fog-square { background-color: #34495e; color: transparent; }
 .sonar-square { background-color: #e74c3c; color: white !important; font-size: 5vw; }
-.highlight-square {
-    background-color: rgba(46, 204, 113, 0.4) !important;
-    box-shadow: inset 0 0 10px #2ecc71;
-}
+.highlight-square { background-color: rgba(46, 204, 113, 0.4) !important; box-shadow: inset 0 0 10px #2ecc71; }
 
 /* -----------------------------------
-   💻 PC画面用のレイアウト（横並びに変化！）
+   💀 キルログ（墓地）のデザイン
+----------------------------------- */
+.graveyard-container { display: flex; gap: 10px; margin-bottom: 20px; }
+.grave-box { flex: 1; background: #233140; padding: 10px; border-radius: 8px; text-align: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+.my-grave { border-bottom: 3px solid #2ecc71; }
+.enemy-grave { border-bottom: 3px solid #e74c3c; }
+.grave-title { font-size: 13px; color: #bdc3c7; display: block; margin-bottom: 8px; font-weight: bold;}
+.captured-pieces { display: flex; flex-wrap: wrap; justify-content: center; min-height: 28px; gap: 2px; }
+.cap-piece { font-size: 24px; line-height: 1; }
+.cap-white { color: #fff; text-shadow: 0 0 2px #000; }
+.cap-black { color: #000; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+
+/* -----------------------------------
+   🎉 勝敗発表（ド派手な演出）
+----------------------------------- */
+#result-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); border-radius: 8px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 100;
+}
+@keyframes pop-in {
+    0% { transform: scale(0.1); opacity: 0; }
+    70% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.result-text { font-size: 40px; font-weight: bold; font-family: 'Impact', sans-serif; letter-spacing: 2px; animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; text-align: center; margin: 0; padding: 20px;}
+.result-win { color: #f1c40f; text-shadow: 0 0 20px #e67e22, 0 0 40px #e67e22; }
+.result-lose { color: #e74c3c; text-shadow: 0 0 20px #c0392b, 0 0 40px #c0392b; }
+.result-desc { font-size: 16px; color: white; margin-top: 10px; background: rgba(0,0,0,0.8); padding: 5px 15px; border-radius: 20px; animation: pop-in 1s forwards;}
+
+/* -----------------------------------
+   💻 PC画面用のレイアウト
 ----------------------------------- */
 @media (min-width: 850px) {
-    .game-layout {
-        flex-direction: row; /* PC時は「左：盤面、右：情報パネル」の横並びに！ */
-        align-items: center;
-        justify-content: center;
-        padding: 40px 20px;
-    }
-
-    .side-panel {
-        max-width: 380px;
-        text-align: left; /* PCの時は文字を左寄せにするとなじみます */
-    }
-
-    #chess-container {
-        width: 100%;
-        max-width: 600px; /* PCでは盤面を少し大きく */
-        margin: 0;
-    }
-
+    .game-layout { flex-direction: row; align-items: center; justify-content: center; padding: 40px 20px; }
+    .side-panel { max-width: 380px; text-align: left; }
+    #chess-container { width: 100%; max-width: 600px; margin: 0; }
     .square { font-size: 50px; }
     .sonar-square { font-size: 35px !important; }
     h1 { font-size: 28px; }
+    .result-text { font-size: 60px; }
 }
 
 /* -----------------------------------
    UI・ボタン・モーダル
 ----------------------------------- */
-button {
-    padding: 14px 20px;
-    font-size: 16px;
-    border-radius: 8px;
-    margin: 5px 0;
-    border: none;
-    font-weight: bold;
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: all 0.2s ease; /* 🌟 動きを滑らかにする */
-}
-
-/* ボタンにマウスを乗せた時やタップした時に少し凹む効果 */
-button:hover { 
-    filter: brightness(1.1); 
-    transform: scale(0.97); 
-}
-
+button { padding: 14px 20px; font-size: 16px; border-radius: 8px; margin: 5px 0; border: none; font-weight: bold; cursor: pointer; touch-action: manipulation; transition: all 0.2s ease; }
+button:hover { filter: brightness(1.1); transform: scale(0.97); }
 .btn-rules { background-color: #3498db; color: white; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
 
-/* オーバーレイ（すりガラス効果追加） */
-.switch-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(5px); /* 🌟 背景をすりガラスのようにぼかす効果 */
-    -webkit-backdrop-filter: blur(5px);
-    display: flex; justify-content: center; align-items: center;
-    z-index: 1000;
-}
+/* 🌟 ロビー画面用のAIレベルボタン */
+.btn-ai-1 { background-color: #2ecc71; color: white; width: 100%; }
+.btn-ai-2 { background-color: #e67e22; color: white; width: 100%; }
+.btn-ai-3 { background-color: #c0392b; color: white; width: 100%; }
+
+.switch-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
 .switch-box { background: #34495e; padding: 30px; border-radius: 12px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
 .ready-btn { background-color: #2ecc71; color: white; width: 100%; padding: 15px; margin-top: 15px;}
