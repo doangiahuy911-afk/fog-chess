@@ -170,8 +170,12 @@ h1, .grave-title {
 /* -----------------------------------
    💻 PC画面用のレイアウト
 ----------------------------------- */
+/* -----------------------------------
+   💻 PC画面用のレイアウト
+----------------------------------- */
 @media (min-width: 850px) {
-    .game-layout { flex-direction: row; align-items: center; justify-content: center; padding: 40px 20px; }
+    /* 🌟 変更：画面の縦幅いっぱいに広げて、盤面とパネルを完全上下左右中央寄せにする */
+    .game-layout { flex-direction: row; align-items: center; justify-content: center; padding: 0 20px; min-height: 100vh; box-sizing: border-box; }
     .side-panel { max-width: 380px; text-align: left; }
     #chess-container { width: 100%; max-width: 600px; margin: 0; }
     .square { font-size: 55px; }
