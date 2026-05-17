@@ -43,13 +43,40 @@ body.theme-wood {
 }
 
 /* -----------------------------------
-   ベース設定
+   ベース設定（🌟師匠風：フルスクリーン背景＆高級フォント）
 ----------------------------------- */
-body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; margin: 0; padding: 0; touch-action: pan-y; transition: background-color 0.3s; }
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+body { 
+    /* 🌟 ここに背景画像のURLを入れます（今は仮の高画質画像） */
+    background-image: url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2000&auto=format&fit=crop');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: #ecf0f1; 
+    font-family: 'Noto Sans JP', sans-serif; 
+    text-align: center; 
+    margin: 0; padding: 0; 
+    touch-action: pan-y; 
+}
+h1, .grave-title { 
+    font-family: 'Cinzel', serif; /* 英語に魔法のような高級感が出るフォント */
+    text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
+    color: #f1c40f; /* ゴールド */
+}
 .game-layout { display: flex; flex-direction: column-reverse; align-items: center; gap: 20px; max-width: 1100px; margin: 0 auto; padding: 20px 10px; }
 .board-wrapper { flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; position: relative; }
-.side-panel { width: 95%; max-width: 500px; background: var(--box-bg); padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px var(--box-shadow); box-sizing: border-box; transition: background-color 0.3s;}
-h1 { font-size: 6vw; margin-top: 0; }
+/* 🌟 師匠風：すりガラス（グラスモーフィズム）のパネル */
+.side-panel { 
+    width: 95%; max-width: 500px; 
+    background: rgba(15, 20, 25, 0.7) !important; /* 黒の半透明 */
+    backdrop-filter: blur(12px); /* 背景をボカす魔法 */
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1); /* ガラスのフチの反射 */
+    padding: 25px; border-radius: 16px; 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6); 
+    box-sizing: border-box; 
+}
 
 /* -----------------------------------
    チェス盤のデザイン（マス目のバグ修正）
@@ -61,14 +88,18 @@ h1 { font-size: 6vw; margin-top: 0; }
     width: 95vw; 
     max-width: 500px; 
     aspect-ratio: 1 / 1; 
-    border: 4px solid var(--box-bg); 
+    /* 🌟 ここから変更：師匠のような美しいすりガラスの枠線にする */
+    border: 1px solid rgba(255, 255, 255, 0.2); 
     border-radius: 12px; 
-    background-color: var(--box-bg); 
+    background-color: rgba(0, 0, 0, 0.5); 
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    /* 🌟 ここまで変更 */
     touch-action: manipulation; 
     -webkit-user-select: none; 
     user-select: none; 
     box-shadow: 0 8px 25px var(--box-shadow); 
-    overflow: hidden;
+    overflow: hidden; /* マスのはみ出しを防止 */
     transition: all 0.3s ease;
 }
 
@@ -163,7 +194,7 @@ button:hover { filter: brightness(1.1); transform: scale(0.97); }
 .btn-ai-2 { background-color: #e67e22; color: white; width: 100%; }
 .btn-ai-3 { background-color: #c0392b; color: white; width: 100%; }
 
-.switch-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.switch-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111111; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
 .switch-box { background: var(--box-bg); padding: 30px; border-radius: 12px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
 .ready-btn { background-color: #2ecc71; color: white; width: 100%; padding: 15px; margin-top: 15px;}
 .top-bar-buttons { display: flex; justify-content: space-between; margin-bottom: 15px; }

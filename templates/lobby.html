@@ -7,7 +7,16 @@
     <title>暗殺霧チェス - ロビー</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .box { background-color: #34495e; padding: 25px 15px; margin: 10px auto; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); width: 90%; max-width: 350px; box-sizing: border-box; }
+        /* 🌟 師匠風ロビーパネル（すりガラス） */
+        .box { 
+            background: rgba(15, 20, 25, 0.7); 
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 25px 15px; margin: 10px auto; border-radius: 16px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6); width: 90%; max-width: 350px; box-sizing: border-box; 
+        }
+        /* ロビーのタイトルも高級フォントに */
+        h1, h3 { font-family: 'Cinzel', 'Noto Sans JP', serif; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
         input { padding: 12px; font-size: 16px; border-radius: 5px; border: none; width: 90%; text-align: center; margin-bottom: 10px; box-sizing: border-box; }
         .btn-create { background-color: #3498db; width: 95%; color: white;}
         .btn-join { background-color: #9b59b6; width: 95%; color: white;}
