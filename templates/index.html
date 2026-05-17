@@ -17,42 +17,67 @@
         .waiting-text { color: #bdc3c7; font-size: 14px; font-weight: normal; margin-top: 5px; display: block; }
         .my-turn-text { color: #2ecc71 !important; font-weight: bold; font-size: 1.1em; }
 
-        /* 🌟 チュートリアルスライド専用アニメーションCSS */
+        /* 🌟 スライド演出用の拡張CSS */
         .tut-slide { display: none; animation: tutFadeIn 0.4s ease; min-height: 420px; }
         .tut-slide.active { display: block; }
         .tut-img-box { width: 100%; height: 200px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; margin-bottom: 15px; }
         .tut-img-box img { width: 100%; height: 100%; object-fit: cover; }
         .tut-anim-area { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* ミニ盤面の設定 (3x3 & 4x4) */
         .mini-grid { display: grid; gap: 4px; margin: 0 auto; }
         .grid-3x3 { grid-template-columns: repeat(3, 1fr); width: 150px; }
         .grid-4x4 { grid-template-columns: repeat(4, 1fr); width: 200px; }
         .m-sq { width: 46px; height: 46px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 28px; border-radius: 4px; }
         .m-sq.fog { background: #1e293b; color: transparent !important; }
+
+        /* スライド3：視界確保アニメーション */
         @keyframes pawnWalk { 0% { transform: translateY(0); } 100% { transform: translateY(-50px); } }
         @keyframes revealRook { 0%, 80% { opacity: 0; background: #1e293b; color: transparent; } 100% { opacity: 1; background: #ecf0f1; color: #2c3e50; } }
         .pawn-move { animation: pawnWalk 2s infinite alternate ease-in-out; }
         .rook-reveal { animation: revealRook 2s infinite alternate ease-in-out; }
-        .enemy-faint { opacity: 0.15; } 
+
+        /* スライド4：ソナー遮蔽アニメーション */
+        .enemy-faint { opacity: 0.15; transition: opacity 0.5s; } /* うっすら見える敵 */
         @keyframes sonarPing { 0% { background: #1e293b; color: transparent; } 100% { background: rgba(231, 76, 60, 0.8); color: #fff; box-shadow: inset 0 0 10px #ff0000; } }
         .sonar-hit { animation: sonarPing 1s infinite alternate; }
+        .occluded-sq { background: #1e293b; color: transparent !important; } /* ソナーに引っかからない */
+
         @keyframes tutFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 🌟 修正箇所（CSS）：動く駒（ビショップ）の周辺をピカピカさせるアニメーション */
+        @keyframes bishopPikaPika {
+            0% { box-shadow: 0 0 5px rgba(241, 196, 15, 0.5); border-color: rgba(241, 196, 15, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(241, 196, 15, 1); border-color: rgba(241, 196, 15, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(241, 196, 15, 0.5); border-color: rgba(241, 196, 15, 0.2); }
+        }
+        .bishop-pika {
+            animation: bishopPikaPika 1.5s infinite;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+
     </style>
 </head>
 <body>
 
     <div id="unified-rules-modal" class="switch-overlay" style="display: none;">
         <div class="switch-box" style="padding: 20px; width: 95%; max-width: 500px; text-align: left; color: #ecf0f1; min-height: 550px; display: flex; flex-direction: column;">
+            
             <div id="slides-container" style="flex-grow: 1;">
+                
                 <div class="tut-slide active">
                     <h3 style="color: #f1c40f; text-align: center; margin-bottom: 10px;" data-i18n="tut_1_title">アウステルリッツの戦い</h3>
                     <div class="tut-img-box"><img src="https://images.unsplash.com/photo-1599839619722-39751411ea63?q=80&w=800&auto=format&fit=crop" alt="History"></div>
                     <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_1_desc">このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。</p>
                 </div>
+
                 <div class="tut-slide">
                     <h3 style="color: #cbd5e1; text-align: center; margin-bottom: 10px;" data-i18n="tut_2_title">戦場の霧とは</h3>
                     <div class="tut-img-box"><img src="https://images.unsplash.com/photo-1485236715568-ddc5ee6ca227?q=80&w=800&auto=format&fit=crop" alt="Fog"></div>
                     <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_2_desc">盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような陣形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。</p>
                 </div>
+
                 <div class="tut-slide">
                     <h3 style="color: #2ecc71; text-align: center; margin-bottom: 10px;" data-i18n="tut_3_title">視界の確保</h3>
                     <div class="tut-anim-area">
@@ -64,6 +89,7 @@
                     </div>
                     <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_3_desc">自分の駒と<strong>その正面1マス</strong>のみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！</p>
                 </div>
+
                 <div class="tut-slide">
                     <h3 style="color: #e74c3c; text-align: center; margin-bottom: 10px;" data-i18n="tut_4_title">ソナーと遮蔽の法則</h3>
                     <div class="tut-anim-area">
@@ -71,12 +97,14 @@
                             <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
                             <div class="m-sq fog"></div><div class="m-sq enemy-faint">♞</div><div class="m-sq fog"></div><div class="m-sq fog"></div>
                             <div class="m-sq fog sonar-hit">⚠️</div><div class="m-sq enemy-faint">♟</div><div class="m-sq fog"></div><div class="m-sq fog"></div>
-                            <div class="m-sq">♗</div><div class="m-sq"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                            <div class="m-sq bishop-pika">♗</div><div class="m-sq"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
                         </div>
                     </div>
-                    <p style="font-size: 13px; margin-top: 10px;" data-i18n="tut_4_desc">移動先に敵がいれば<strong>⚠️</strong>と光りますが、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません。</p>
+                    <p style="font-size: 13px; margin-top: 10px;" data-i18n="tut_4_desc">移動先に敵がいれば⚠️と光りますが、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません（遮蔽の法則）。</p>
                 </div>
+
             </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
                 <button class="icon-btn" onclick="prevSlide()" id="prev-tut-btn">← <span data-i18n="btn_prev">戻る</span></button>
                 <div id="slide-count" style="font-family: 'Cinzel', serif; color: #f1c40f;">1 / 4</div>
@@ -162,9 +190,10 @@
                 p_p: "ポーン ♟", p_r: "ルーク ♜", p_n: "ナイト ♞", p_b: "ビショップ ♝", p_q: "クイーン ♛", p_k: "キング ♚", next_turn: "次は {0} の番です",
                 uni_title: "📜 遊び方＆詳細ルール", btn_open_uni: "📖 遊び方とルールを確認", btn_close_uni: "戦場に戻る", btn_prev: "戻る", btn_next: "次へ", btn_finish: "戦場へ",
                 tut_1_title: "アウステルリッツの戦い", tut_1_desc: "このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。",
-                tut_2_title: "戦場の霧とは", tut_2_desc: "盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような阵形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。",
+                tut_2_title: "戦場の霧とは", tut_2_desc: "盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに潜んでいるか、あなたは一歩踏み出すまで知ることはできません。",
                 tut_3_title: "視界の確保", tut_3_desc: "自分の駒とその正面1マスのみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！",
-                tut_4_title: "ソナーと遮蔽の法則", tut_4_desc: "移動先に敵がいれば⚠️と光りますが、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません。"
+                // 🌟 修正箇所（辞書）：スライド4の説明文をポーンとナイトに変更
+                tut_4_title: "ソナーと遮蔽の法則", tut_4_desc: "移動先に敵がいれば⚠️と光りますが、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません（遮蔽の法則）。"
             },
             en: {
                 app_title: "🌫️ Fog Chess", btn_theme: "Theme", room_label: "Room:", role_checking: "You are: Checking...", loading: "Loading...",
@@ -233,10 +262,7 @@
         function openUnifiedRules() { currentSlideIdx = 0; updateSlideDisplay(); document.getElementById('unified-rules-modal').style.display = 'flex'; }
         function closeUnifiedRules() { document.getElementById('unified-rules-modal').style.display = 'none'; }
 
-        const icons = {
-            "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
-            "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚"
-        };
+        const icons = { "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔", "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚" };
 
         async function joinRoom() {
             const response = await fetch(`/join_room_backend/${roomId}`, {
