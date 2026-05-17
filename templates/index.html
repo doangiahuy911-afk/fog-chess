@@ -21,37 +21,55 @@
 <body>
 
    <div id="unified-rules-modal" class="switch-overlay" style="display: none;">
-        <div class="switch-box" style="padding: 20px; width: 90%; max-width: 480px; text-align: left; color: #ecf0f1; max-height: 85vh; overflow-y: auto;">
-            <h3 style="color: #f1c40f; text-align: center; margin-top: 0; margin-bottom: 15px;" data-i18n="uni_title">📜 遊び方＆詳細ルール</h3>
+        <div class="switch-box" style="padding: 20px; width: 95%; max-width: 550px; text-align: left; color: #ecf0f1; min-height: 500px; display: flex; flex-direction: column;">
+            <div id="tutorial-slides-container" style="flex-grow: 1; position: relative; overflow: hidden;">
+                
+                <div class="tut-slide active">
+                    <h3 style="color: #f1c40f; text-align: center;" data-i18n="tut_1_title">⚔️ 1. 歴史を再現する戦略</h3>
+                    <div class="tut-img-box"><img src="http://googleusercontent.com/image_collection/image_retrieval/3099264142655598093" style="width:100%; border-radius:8px;"></div>
+                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_1_desc">このゲームは1805年、ナポレオンが朝霧を利用して敵を奇襲した<strong>「アウステルリッツの戦い」</strong>をモデルにしています。霧を制する者が戦場を制します。</p>
+                </div>
 
-            <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #bdc3c7;">
-                <h4 style="margin: 0 0 5px 0; color: #bdc3c7;" data-i18n="uni_fog_title">🌫️ 1. 霧の視界と基本ルール</h4>
-                <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.5;">
-                    <li data-i18n="uni_fog_1">相手のキングを取れば勝利です。</li>
-                    <li data-i18n="uni_fog_2">自分の駒とその正面1マスのみが見えます。</li>
-                    <li data-i18n="uni_fog_3">相手が駒を動かした時、種類だけ通知されます（場所は秘密）。</li>
-                </ul>
+                <div class="tut-slide">
+                    <h3 style="color: #cbd5e1; text-align: center;" data-i18n="tut_2_title">🌫️ 2. 戦場の霧の正体</h3>
+                    <div class="tut-img-box"><img src="http://googleusercontent.com/image_collection/image_retrieval/3140239736827284283" style="width:100%; border-radius:8px; filter: contrast(1.2);"></div>
+                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_2_desc">盤面は深い霧に包まれており、基本的には敵の場所がわかりません。これは単なる目隠しではなく、<strong>情報戦</strong>を象徴しています。</p>
+                </div>
+
+                <div class="tut-slide">
+                    <h3 style="color: #2ecc71; text-align: center;" data-i18n="tut_3_title">👁️ 3. 視界の確保</h3>
+                    <div class="tut-anim-board">
+                        <div class="tut-grid">
+                            <div class="tut-sq fog"></div><div class="tut-sq fog"></div><div class="tut-sq fog"></div>
+                            <div class="tut-sq fog"></div><div class="tut-sq target-piece" style="opacity:0;">♜</div><div class="tut-sq fog"></div>
+                            <div class="tut-sq my-piece animate-move">♙</div><div class="tut-sq"></div><div class="tut-sq"></div>
+                        </div>
+                    </div>
+                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_3_desc">自分の駒と<strong>その正面1マス</strong>のみが見えます。駒を動かして霧を晴らし、潜伏している敵をあぶり出しましょう！</p>
+                </div>
+
+                <div class="tut-slide">
+                    <h3 style="color: #e74c3c; text-align: center;" data-i18n="tut_4_title">📡 4. ソナーと遮蔽の法則</h3>
+                    <div class="tut-anim-board">
+                        <div class="tut-grid">
+                            <div class="tut-sq fog sonar-glow">⚠️</div><div class="tut-sq fog"></div><div class="tut-sq fog"></div>
+                            <div class="tut-sq fog"></div><div class="tut-sq"></div><div class="tut-sq fog"></div>
+                            <div class="tut-sq my-piece">♗</div><div class="tut-sq"></div><div class="tut-sq my-piece">♟</div>
+                        </div>
+                    </div>
+                    <p style="font-size: 14px; margin-top: 10px; line-height: 1.4; font-size: 13px;" data-i18n="tut_4_desc">
+                        移動範囲に敵がいるとマスが<strong>⚠️</strong>と光ります。ただし、最前線の駒のみがソナーを発揮し、後ろの駒はソナーに反応しません（遮蔽の法則）。
+                    </p>
+                </div>
+
             </div>
 
-            <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #e74c3c;">
-                <h4 style="margin: 0 0 5px 0; color: #e74c3c;" data-i18n="uni_sonar_title">📡 2. 索敵ソナーと暗殺予告</h4>
-                <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.5;">
-                    <li data-i18n="uni_sonar_1">攻撃範囲に敵がいるとマスが<strong>赤く発光（⚠️）</strong>します。</li>
-                    <li data-i18n="uni_sonar_2">姿が見えている敵が赤く光った場合、その敵を攻撃できます！</li>
-                    <li data-i18n="uni_sonar_3">自分のキングが狙われると<strong>自分にだけ警告</strong>が出ます。</li>
-                    <li data-i18n="uni_sonar_4">自殺手（キングを危険に晒す移動）はシステムで禁止されます。</li>
-                </ul>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <button class="icon-btn" onclick="prevSlide()" id="prev-tut-btn" style="opacity: 0.5;">← <span data-i18n="btn_prev">戻る</span></button>
+                <div id="slide-indicator" style="font-size: 14px; font-weight: bold; color: #f1c40f;">1 / 4</div>
+                <button class="icon-btn" onclick="nextSlide()" id="next-tut-btn" style="background: #3498db; color: white;"><span data-i18n="btn_next">次へ</span> →</button>
+                <button class="ready-btn" onclick="closeUnifiedRules()" id="finish-tut-btn" style="display:none; width: auto; padding: 10px 20px; margin: 0;" data-i18n="btn_finish">戦場へ</button>
             </div>
-
-            <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #f1c40f;">
-                <h4 style="margin: 0 0 5px 0; color: #f1c40f;" data-i18n="uni_sudden_title">💀 3. サドンデス（霧の消滅）</h4>
-                <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.5;">
-                    <li data-i18n="uni_sudden_1">80ターン経過、または残り駒が10個以下で全ての霧が晴れます。</li>
-                    <li data-i18n="uni_sudden_2">5ターンごとに一瞬だけ、お互いのキングの場所が公開されます。</li>
-                </ul>
-            </div>
-
-            <button class="ready-btn" onclick="closeUnifiedRules()" style="background-color: #3498db; margin-top: 15px;" data-i18n="btn_close_uni">戦場に戻る</button>
         </div>
     </div>
 
@@ -110,6 +128,32 @@
     </div>
 
     <script>
+        // 🌟 スライド制御のJavaScript
+        let currentSlideIdx = 0;
+        function updateSlideDisplay() {
+            const slides = document.querySelectorAll('.tut-slide');
+            const total = slides.length;
+            slides.forEach((s, i) => s.classList.toggle('active', i === currentSlideIdx));
+            
+            document.getElementById('slide-indicator').innerText = `${currentSlideIdx + 1} / ${total}`;
+            document.getElementById('prev-tut-btn').style.opacity = currentSlideIdx === 0 ? "0.3" : "1";
+            document.getElementById('next-tut-btn').style.display = currentSlideIdx === total - 1 ? "none" : "block";
+            document.getElementById('finish-tut-btn').style.display = currentSlideIdx === total - 1 ? "block" : "none";
+        }
+        function nextSlide() {
+            const total = document.querySelectorAll('.tut-slide').length;
+            if (currentSlideIdx < total - 1) { currentSlideIdx++; updateSlideDisplay(); }
+        }
+        function prevSlide() {
+            if (currentSlideIdx > 0) { currentSlideIdx--; updateSlideDisplay(); }
+        }
+        // ルールを開く時にスライドをリセット
+        function openUnifiedRules() { 
+            currentSlideIdx = 0;
+            updateSlideDisplay();
+            document.getElementById('unified-rules-modal').style.display = 'flex'; 
+        }
+        
         const roomId = "{{ room_id }}";
         if (!localStorage.getItem('chess_player_id')) localStorage.setItem('chess_player_id', 'p_' + Math.random().toString(36).substr(2, 9));
         const playerId = localStorage.getItem('chess_player_id');
