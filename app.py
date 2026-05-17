@@ -16,7 +16,6 @@ app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 # === 2. ゲームの状態管理（初期化・部屋作成） ===
 # =====================================================================
 def reset_board():
-    # チェス盤の初期配置（W=白, B=黒 / P=ポーン, R=ルーク, N=ナイト, B=ビショップ, Q=クイーン, K=キング）
     return [
         ["BR", "BN", "BB", "BQ", "BK", "BB", "BN", "BR"],
         ["BP", "BP", "BP", "BP", "BP", "BP", "BP", "BP"],
@@ -28,11 +27,9 @@ def reset_board():
         ["WR", "WN", "WB", "WQ", "WK", "WB", "WN", "WR"]
     ]
 
-# 全ての対戦ルームのデータを保存する辞書
 game_rooms = {}
 
 def get_or_create_room(room_id):
-    # 部屋が存在しなければ新しく作る
     if room_id not in game_rooms:
         game_rooms[room_id] = {
             "board": reset_board(),
@@ -45,12 +42,11 @@ def get_or_create_room(room_id):
             "last_moved_piece": None,
             "captured_by_W": [], 
             "captured_by_B": [],
-            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)] # AIがプレイヤーの足跡を追跡するヒートマップ
+            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)] 
         }
     return game_rooms[room_id]
 
 def count_pieces(board):
-    # 盤面に残っている駒の合計数をカウント
     count = 0
     for r in range(8):
         for c in range(8):
@@ -61,14 +57,13 @@ def count_pieces(board):
 # === 3. チェスの基本ルールと駒の動き ===
 # =====================================================================
 def get_valid_moves_for_board(board, r, c):
-    # 選択した駒が「物理的に」動けるマスのリストを取得（王手放置などの反則は考慮しない）
     piece = board[r][c]
     if piece == "--": return []
     color = piece[0]
     p_type = piece[1]
     moves = []
     
-    if p_type == "P": # ポーンの動き
+    if p_type == "P":
         direction = -1 if color == "W" else 1
         start_row = 6 if color == "W" else 1
         if 0 <= r + direction < 8 and board[r + direction][c] == "--":
@@ -80,20 +75,20 @@ def get_valid_moves_for_board(board, r, c):
                 target = board[r + direction][c + dc]
                 if target != "--" and target[0] != color:
                     moves.append([r + direction, c + dc])
-    elif p_type == "N": # ナイトの動き
+    elif p_type == "N":
         n_moves = [(-2,-1), (-2,1), (-1,-2), (-1,2), (1,-2), (1,2), (2,-1), (2,1)]
         for dr, dc in n_moves:
             nr, nc = r + dr, c + dc
             if 0 <= nr < 8 and 0 <= nc < 8:
                 if board[nr][nc] == "--" or board[nr][nc][0] != color: moves.append([nr, nc])
-    elif p_type == "K": # キングの動き
+    elif p_type == "K":
         for dr in [-1, 0, 1]:
             for dc in [-1, 0, 1]:
                 if dr == 0 and dc == 0: continue
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < 8 and 0 <= nc < 8:
                     if board[nr][nc] == "--" or board[nr][nc][0] != color: moves.append([nr, nc])
-    else: # ルーク・ビショップ・クイーンの直線的な動き
+    else: 
         directions = []
         if p_type == "R": directions = [(-1,0), (1,0), (0,-1), (0,1)]
         elif p_type == "B": directions = [(-1,-1), (-1,1), (1,-1), (1,1)]
@@ -112,7 +107,6 @@ def get_valid_moves_for_board(board, r, c):
     return moves
 
 def is_in_check_board(board, color):
-    # 自分のキングが王手（チェック）されているかを判定
     king_piece = "WK" if color == "W" else "BK"
     king_pos = None
     for r in range(8):
@@ -131,7 +125,6 @@ def is_in_check_board(board, color):
     return False
 
 def get_legal_moves_for_board(board, r, c):
-    # 実際に動かせる合法手（動かした後に自分が王手にならない手）だけを抽出
     piece = board[r][c]
     if piece == "--": return []
     color = piece[0]
@@ -150,12 +143,11 @@ def get_legal_moves_for_board(board, r, c):
 # === 4. ゲームの進行判定（勝敗・引き分け） ===
 # =====================================================================
 def check_game_over_status(room_id):
-    # ゲームが終了しているか（詰み、引き分けなど）をチェック
     room = game_rooms[room_id]
     board = room["board"]
     turn = room["current_turn"]
     if count_pieces(board) == 2:
-        room["winner"] = "DRAW_INSUFFICIENT" # 駒不足の引き分け
+        room["winner"] = "DRAW_INSUFFICIENT"
         return
     has_legal_move = False
     for r in range(8):
@@ -168,20 +160,18 @@ def check_game_over_status(room_id):
     if not has_legal_move:
         if is_in_check_board(board, turn):
             winner_color = "B" if turn == "W" else "W"
-            room["winner"] = f"WIN_{winner_color}" # チェックメイト（勝ち）
+            room["winner"] = f"WIN_{winner_color}"
         else:
-            room["winner"] = "DRAW_STALEMATE" # ステルスメイト（引き分け）
+            room["winner"] = "DRAW_STALEMATE"
 
 # =====================================================================
-# === 5. 霧（視界）の計算システム ===
+# === 5. 霧（視界）の計算システム（★バグ修正・ハイブリッドロックオン） ===
 # =====================================================================
 def get_visible_board(room_id, player_color):
-    # プレイヤーの視界（霧とソナー）を計算して返す
     room = get_or_create_room(room_id)
     board = room["board"]
     is_sudden_death = (room["turn_count"] >= 80 or count_pieces(board) <= 10)
     
-    # サドンデス発動時や決着時は、すべての霧を晴らす
     if room["winner"] or is_sudden_death:
         visible = []
         for r in range(8):
@@ -191,34 +181,41 @@ def get_visible_board(room_id, player_color):
             visible.append(row)
         return visible
 
-    # オフライン（1台のスマホ）で交代中の画面隠し
     if len(room["players"]) <= 1 and room["switching_turn"]:
         return [["fog" for _ in range(8)] for _ in range(8)]
     
     turn = player_color if player_color in ["W", "B"] else room["current_turn"]
     visible = [["fog" for _ in range(8)] for _ in range(8)]
     
+    # 【1回目のループ】まず、見えている駒と「目の前1マス」をすべて確定させる
     for r in range(8):
         for c in range(8):
             piece = board[r][c]
             if piece.startswith(turn):
-                visible[r][c] = piece # 自分の駒は見える
+                visible[r][c] = piece 
                 direction = -1 if turn == "W" else 1
-                # 目の前1マスの視界
                 if 0 <= r + direction < 8:
                     front = board[r + direction][c]
                     visible[r + direction][c] = "empty" if front == "--" else front
                 
-                # 敵を感知するソナー（攻撃範囲）
+    # 【2回目のループ】ソナーを乗せる（被ったらハイブリッド化する）
+    for r in range(8):
+        for c in range(8):
+            piece = board[r][c]
+            if piece.startswith(turn):
                 valid_moves = get_valid_moves_for_board(board, r, c)
                 for mr, mc in valid_moves:
                     target = board[mr][mc]
                     if target != "--" and not target.startswith(turn):
-                        visible[mr][mc] = "sonar"
+                        # すでに敵の姿が見えている場合は「_sonar」タグをくっつける（上書きしない）
+                        if visible[mr][mc] not in ["fog", "sonar", "empty"]:
+                            if not visible[mr][mc].endswith("_sonar"):
+                                visible[mr][mc] += "_sonar"
+                        else:
+                            # 霧の中なら通常のソナー表示
+                            visible[mr][mc] = "sonar"
 
-    # 5ターンごとのキング位置チラ見せ機能
-    current_round = room["turn_count"] // 2
-    if current_round > 0 and current_round % 5 == 0:
+    if room["turn_count"] // 2 > 0 and (room["turn_count"] // 2) % 5 == 0:
         for r in range(8):
             for c in range(8):
                 if board[r][c] in ["WK", "BK"]:
@@ -230,7 +227,6 @@ def get_visible_board(room_id, player_color):
 # === 6. 最強AI（レベル3）の頭脳：ミニマックス法 ===
 # =====================================================================
 def get_all_pseudo_moves(board, color):
-    # AIが計算用にすべての一手をリスト化する
     moves = []
     for r in range(8):
         for c in range(8):
@@ -238,7 +234,6 @@ def get_all_pseudo_moves(board, color):
                 valid_destinations = get_valid_moves_for_board(board, r, c)
                 for dr, dc in valid_destinations:
                     moves.append((r, c, dr, dc))
-    # 良い手から順番に計算するための優先度付け
     def move_priority(m):
         tr, tc = m[2], m[3]
         target = board[tr][tc]
@@ -252,7 +247,6 @@ def get_all_pseudo_moves(board, color):
     return moves
 
 def evaluate_board(board, room_id=None):
-    # 盤面の「どっちが有利か」を点数化する評価関数
     piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90, "K": 10000}
     score = 0
     wk_alive = False
@@ -275,7 +269,6 @@ def evaluate_board(board, room_id=None):
     if not wk_alive: return 99999  
     if not bk_alive: return -99999 
     
-    # 🌟 サドンデス時は敵のキングを端に追い詰めるほど高得点にする（引き分け防止）
     if room_id and (game_rooms[room_id]["turn_count"] >= 80 or count_pieces(board) <= 10):
         if wk_pos:
             w_r, w_c = wk_pos
@@ -285,7 +278,6 @@ def evaluate_board(board, room_id=None):
     return score
 
 def minimax(board, depth, alpha, beta, is_maximizing, room_id):
-    # 数手先まで仮想の盤面を展開し、一番高い点数のルートを探すアルファベータ探索
     eval_score = evaluate_board(board, room_id)
     if abs(eval_score) >= 90000 or depth == 0: return eval_score
         
@@ -335,18 +327,15 @@ def minimax(board, depth, alpha, beta, is_maximizing, room_id):
 # =====================================================================
 @app.route('/')
 def lobby():
-    # ロビー画面。ランダムな部屋IDを生成して表示。
     random_id = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
     return render_template('lobby.html', suggested_id=random_id)
 
 @app.route('/room/<room_id>')
 def room(room_id):
-    # 対戦画面（メイン画面）を表示。
     return render_template('index.html', room_id=room_id)
 
 @app.route('/join_room_backend/<room_id>', methods=['POST'])
 def join_room_backend(room_id):
-    # プレイヤーが部屋に入った時の処理
     room = get_or_create_room(room_id)
     data = request.json
     player_id = data.get('player_id')
@@ -367,7 +356,6 @@ def join_room_backend(room_id):
 
 @app.route('/get_game/<room_id>', methods=['POST'])
 def get_game(room_id):
-    # 毎秒画面を更新するためのデータ取得ルート
     room = get_or_create_room(room_id)
     data = request.json
     player_id = data.get('player_id')
@@ -405,7 +393,6 @@ def get_game(room_id):
 
 @app.route('/click_square/<room_id>', methods=['POST'])
 def click_square(room_id):
-    # 盤面のマスをクリックした時の処理（選択・移動）
     room = get_or_create_room(room_id)
     data = request.json
     player_id = data['player_id']
@@ -483,7 +470,6 @@ def click_square(room_id):
 # =====================================================================
 @app.route('/ai_move/<room_id>', methods=['POST'])
 def ai_move(room_id):
-    # AIに手番を渡して、考えて動かす処理
     room = get_or_create_room(room_id)
     if room["winner"] or room["current_turn"] != "B":
         return jsonify({"status": "not_ai_turn"})
@@ -493,7 +479,6 @@ def ai_move(room_id):
     chosen = None
     is_sudden_death = (room["turn_count"] >= 80 or count_pieces(board) <= 10)
 
-    # --- Level 1 AI (ランダム＋王手チャンス狙い) ---
     if "_1_" in room_id:
         possible_moves = []
         for r in range(8):
@@ -521,7 +506,6 @@ def ai_move(room_id):
             top_moves = possible_moves[:min(3, len(possible_moves))] 
             chosen = random.choice(top_moves)
 
-    # --- Level 2 AI (ヒートマップ足跡追跡＋損得勘定) ---
     elif "_2_" in room_id:
         possible_moves = []
         piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90}
@@ -561,7 +545,6 @@ def ai_move(room_id):
             top_moves = [m for m in possible_moves if m[0] >= best_score - 10]
             chosen = random.choice(top_moves)
 
-    # --- Level 3 AI (最強：ミニマックス法アルファベータ探索) ---
     else: 
         best_score = -float('inf')
         best_moves = []
@@ -574,7 +557,6 @@ def ai_move(room_id):
                     for mr, mc in get_legal_moves_for_board(board, r, c):
                         all_moves.append((r, c, mr, mc))
         
-        # 🌟 ここが修正点！霧が晴れたら「6手先」、通常時は「3手先」を読む
         SEARCH_DEPTH = 6 if is_sudden_death else 3 
         
         if all_moves:
@@ -607,7 +589,6 @@ def ai_move(room_id):
                 move = random.choice(best_moves)
                 chosen = (0, move[0], move[1], move[2], move[3])
 
-    # 共通：AIが手を選んだ後の処理
     if not chosen: 
         check_game_over_status(room_id)
         return jsonify({"status": "no_moves"})
@@ -638,14 +619,12 @@ def ai_move(room_id):
 # =====================================================================
 @app.route('/ready_next_turn/<room_id>', methods=['POST'])
 def ready_next_turn(room_id):
-    # オフラインプレイ時の「準備完了」ボタン処理
     room = get_or_create_room(room_id)
     room["switching_turn"] = False
     return jsonify({"status": "ready"})
 
 @app.route('/reset/<room_id>', methods=['POST'])
 def reset(room_id):
-    # ゲームのリセット（再戦）処理
     if room_id in game_rooms:
         players = game_rooms[room_id]["players"]
         game_rooms[room_id] = {
@@ -657,7 +636,6 @@ def reset(room_id):
 
 @app.route('/leave_room/<room_id>', methods=['POST'])
 def leave_room(room_id):
-    # 部屋を退出する処理
     data = request.json
     player_id = data.get('player_id')
     if room_id in game_rooms and player_id in game_rooms[room_id]["players"]:
@@ -666,7 +644,6 @@ def leave_room(room_id):
             del game_rooms[room_id]
     return jsonify({"status": "left"})
 
-# 🌟 変更点：Renderでデプロイするためのポート指定設定
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
