@@ -231,7 +231,8 @@
 
         const langs = ['ja', 'en', 'zh'];
         const langLabels = ['日本語', 'English', '中文'];
-        let currentLangIdx = parseInt(localStorage.getItem('chess_lang_idx') || '0');
+        // 🌟 '0'（日本語）から '1'（英語）にデフォルトを変更！
+        let currentLangIdx = parseInt(localStorage.getItem('chess_lang_idx') || '1');
         let t = dict[langs[currentLangIdx]];
 
         function applyLang() {
