@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="視界が1マスしかない極限の心理戦！ブラウザで無料で遊べるオンライン『暗殺霧チェス』。">
     <title>暗殺霧チェス - ロビー</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
@@ -12,8 +13,38 @@
         .btn-join { background-color: #9b59b6; width: 95%; color: white;}
         hr { border: 0; height: 1px; background: #5d6d7e; margin: 20px 0; }
         .ai-buttons-container { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        
+        /* 📜 スクロール可能な詳細ルール用のスタイル */
+        .rules-box-detail {
+            max-height: 65vh;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .rules-section {
+            background: #233140;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #f1c40f;
+        }
+        .rules-section h4 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #f1c40f;
+            font-size: 15px;
+        }
+        .rules-section p, .rules-section ul {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #ecf0f1;
+            padding-left: 15px;
+        }
+        .rules-section ul { padding-left: 20px; }
+
+        /* 🌐 翻訳ボタン用のスタイル（追加） */
         .top-bar-buttons { display: flex; justify-content: flex-end; padding: 10px; max-width: 350px; margin: 0 auto; }
-        .icon-btn { background: rgba(0,0,0,0.2); color: var(--text-color); padding: 8px 12px; font-size: 14px; border-radius: 5px; border: none; cursor: pointer; }
+        .icon-btn { background: rgba(0,0,0,0.2); color: var(--text-color); padding: 8px 12px; font-size: 14px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -22,8 +53,64 @@
         <button class="icon-btn" onclick="cycleLanguage()">🌐 <span id="lang-label">日本語</span></button>
     </div>
 
+    <div id="rules-modal" class="switch-overlay" style="display: none;">
+        <div class="switch-box" style="padding: 20px; width: 90%; max-width: 450px; text-align: left; color: #ecf0f1;">
+            <h3 style="color: #f1c40f; text-align: center; margin-top: 0; margin-bottom: 15px;" data-i18n="book_title">📜 暗殺霧チェス 公式ルールブック</h3>
+            
+            <div class="rules-box-detail">
+                <div class="rules-section">
+                    <h4 data-i18n="sec_1_title">👁️ 1. 基本ルール（暗闇の探索）</h4>
+                    <ul>
+                        <li data-i18n="sec_1_li1"><strong>視界の制限:</strong> 盤面は深い霧に包まれており、見えるのは<strong>「自分の駒があるマス」とその「正面1マス」</strong>だけです。</li>
+                        <li data-i18n="sec_1_li2"><strong>索敵ソナー:</strong> 自分の駒が動かせる範囲に敵が潜んでいる場合、そのマスが赤く光り<strong>「⚠️」</strong>と表示されます。</li>
+                        <li data-i18n="sec_1_li3"><strong>行動通知:</strong> 相手が駒を動かすと、画面に「相手がポーンを動かしました」等のログが出ます（場所は秘密です）。</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4 data-i18n="sec_2_title">🚨 2. 暗殺予告（王手と自殺手の禁止）</h4>
+                    <ul>
+                        <li data-i18n="sec_2_li1"><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分側の画面にだけ<strong>「🚨 警告：キングが狙われています！」</strong>と表示されます。相手にはバレていません！</li>
+                        <li data-i18n="sec_2_li2"><strong>自殺手の禁止:</strong> キングがわざと敵の攻撃範囲に飛び込む手や、味方のキングを危険にさらす手（自殺手）は<strong>システムでロックされ、選択できなくなります。</strong></li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4 data-i18n="sec_3_title">🔥 3. 終盤サドンデス（霧の消滅）</h4>
+                    <p data-i18n="sec_3_desc">以下のいずれかの条件を満たした瞬間、<strong>全ての霧が晴れて盤面が完全公開</strong>になり、ガチの公開頭脳戦へ移行します！</p>
+                    <ul>
+                        <li data-i18n="sec_3_li1">対局が<strong>合計 80 ターン</strong>を超えた時</li>
+                        <li data-i18n="sec_3_li2">お互いの生き残っている駒が<strong>合計 10 個以下</strong>になった時</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4 data-i18n="sec_4_title">🏁 4. 勝敗と決着ルール（無限ループ防止）</h4>
+                    <ul>
+                        <li data-i18n="sec_4_li1"><strong>チェックメイト（勝利）:</strong> 敵のキングを王手し、どこにも逃げられない状態に追い詰めればその瞬間に強制終了し、勝利となります！</li>
+                        <li data-i18n="sec_4_li2"><strong>ステイルメイト（引き分け）:</strong> 王手はされていないが、自分の番に動かせる駒が1つもない（自殺手しか残っていない）場合は、手詰まりで<strong>引き分け</strong>となります。</li>
+                        <li data-i18n="sec_4_li3"><strong>戦力不足（引き分け）:</strong> 盤面にキング2人だけしか残らなくなった場合、絶対に決着がつかないため即座に<strong>引き分け</strong>になります。</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section" style="border-left-color: #9b59b6;">
+                    <h4 data-i18n="sec_5_title">🤖 5. 对AI战・難易度レベル解説</h4>
+                    <ul>
+                        <li data-i18n="sec_5_li1"><strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。</li>
+                        <li data-i18n="sec_5_li2"><strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。</li>
+                        <li data-i18n="sec_5_li3"><strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin: 0; width: 100%;" data-i18n="btn_close_rules">ルールを閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <h1 data-i18n="lobby_title">🌫️ 暗殺霧チェス ロビー</h1>
-    <button class="btn-rules" onclick="location.href='/room/AI_1_rules'" style="max-width: 350px; background-color: #2ecc71;" data-i18n="btn_test">♟️ 試しにゲーム画面を見てみる</button>
+    <button class="btn-rules" onclick="openRules()" style="max-width: 350px;" data-i18n="btn_rules">📖 ルール・AI解説を確認する</button>
 
     <div class="box">
         <h3 style="margin-top: 0;" data-i18n="create_room">🔑 新しく部屋を作る</h3>
@@ -50,28 +137,88 @@
     </div>
 
     <script>
-        // 多言語辞書
+        // 🌐 ロビー専用・3ヶ国語辞書データ（長文ルールブックも完全網羅）
         const dictLobby = {
             ja: {
-                lobby_title: "🌫️ 暗殺霧チェス ロビー", btn_test: "♟️ 試しにゲーム画面を見てみる",
+                lobby_title: "🌫️ 暗殺霧チェス ロビー", btn_rules: "📖 ルール・AI解説を確認する",
                 create_room: "🔑 新しく部屋を作る", room_pwd_desc: "友達に送るパスワード", btn_create: "部屋を作る",
                 join_room: "🚪 既存の部屋に入る", pwd_placeholder: "パスワードを入力", btn_join: "合流する",
                 play_ai: "🤖 1人で遊ぶ (CPU戦)", ai_desc: "相手の強さを選んでください",
-                ai_1: "🟢 Lv.1 接待プレイ（練習用）", ai_2: "🟠 Lv.2 熱源探知（通常）", ai_3: "🔴 Lv.3 未来予知（ガチ勢向け）"
+                ai_1: "🟢 Lv.1 接待プレイ（練習用）", ai_2: "🟠 Lv.2 熱源探知（通常）", ai_3: "🔴 Lv.3 未来予知（ガチ勢向け）",
+                book_title: "📜 暗殺霧チェス 公式ルールブック", btn_close_rules: "ルールを閉じる",
+                sec_1_title: "👁️ 1. 基本ルール（暗闇の探索）",
+                sec_1_li1: "<strong>視界の制限:</strong> 盤面は深い霧に包まれており、見えるのは<strong>「自分の駒があるマス」とその「正面1マス」</strong>だけです。",
+                sec_1_li2: "<strong>索敵ソナー:</strong> 自分の駒が動かせる範囲に敵が潜んでいる場合、そのマスが赤く光り<strong>「⚠️」</strong>と表示されます。",
+                sec_1_li3: "<strong>行動通知:</strong> 相手が駒を動かすと、画面に「相手がポーンを動かしました」等のログが出ます（場所は秘密です）。",
+                sec_2_title: "🚨 2. 暗殺予告（王手と自殺手の禁止）",
+                sec_2_li1: "<strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分側の画面にだけ<strong>「🚨 警告：キングが狙われています！」</strong>と表示されます。相手にはバレていません！",
+                sec_2_li2: "<strong>自殺手の禁止:</strong> キングがわざと敵の攻撃範囲に飛び込む手や、味方のキングを危険にさらす手（自殺手）は<strong>システムでロックされ、選択できなくなります。</strong>",
+                sec_3_title: "🔥 3. 終盤サドンデス（霧の消滅）",
+                sec_3_desc: "以下のいずれかの条件を満たした瞬間、<strong>全ての霧が晴れて盤面が完全公開</strong>になり、ガチの公開頭脳戦へ移行します！",
+                sec_3_li1: "対局が<strong>合計 80 ターン</strong>を超えた時",
+                sec_3_li2: "お互いの生き残っている駒が<strong>合計 10 個以下</strong>になった時",
+                sec_4_title: "🏁 4. 勝敗と決着ルール（無限ループ防止）",
+                sec_4_li1: "<strong>チェックメイト（勝利）:</strong> 敵のキングを王手し、どこにも逃げられない状態に追い詰めればその瞬間に強制終了し、勝利となります！",
+                sec_4_li2: "<strong>ステイルメイト（引き分け）:</strong> 王手はされていないが、自分の番に動かせる駒が1つもない（自殺手しか残っていない）場合は、手詰まりで<strong>引き分け</strong>となります。",
+                sec_4_li3: "<strong>戦力不足（引き分け）:</strong> 盤面にキング2人だけしか残らなくなった場合、絶対に決着がつかないため即座に<strong>引き分け</strong>になります。",
+                sec_5_title: "🤖 5. 对AI战・難易度レベル解説",
+                sec_5_li1: "<strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。",
+                sec_5_li2: "<strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。",
+                sec_5_li3: "<strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。"
             },
             en: {
-                lobby_title: "🌫️ Fog Chess Lobby", btn_test: "♟️ Test the Game Screen",
+                lobby_title: "🌫️ Fog Chess Lobby", btn_rules: "📖 View Rules & AI Info",
                 create_room: "🔑 Create New Room", room_pwd_desc: "Password to share with a friend", btn_create: "Create Room",
                 join_room: "🚪 Join Existing Room", pwd_placeholder: "Enter Password", btn_join: "Join Room",
-                play_ai: "🤖 Play vs AI", ai_desc: "Select AI Difficulty",
-                ai_1: "🟢 Lv.1 Easy (Practice)", ai_2: "🟠 Lv.2 Heat Tracker (Normal)", ai_3: "🔴 Lv.3 Oracle (Hardcore)"
+                play_ai: "🤖 Play vs AI (CPU)", ai_desc: "Select AI Difficulty",
+                ai_1: "🟢 Lv.1 Easy (Practice)", ai_2: "🟠 Lv.2 Heat Tracker (Normal)", ai_3: "🔴 Lv.3 Oracle (Hardcore)",
+                book_title: "📜 Fog Chess Official Rulebook", btn_close_rules: "Close Rules",
+                sec_1_title: "👁️ 1. Basic Rules (Exploring the Dark)",
+                sec_1_li1: "<strong>Vision Limit:</strong> The board is wrapped in deep fog. You can only see <strong>your own pieces and 1 square directly in front</strong> of them.",
+                sec_1_li2: "<strong>Sonar:</strong> If an enemy is hiding within your piece's movement range, that square glows red and displays <strong>'⚠️'</strong>.",
+                sec_1_li3: "<strong>Move Notice:</strong> When the enemy moves, a log appears (e.g., 'Enemy moved Pawn'), but the exact location remains secret.",
+                sec_2_title: "🚨 2. Assassination Alert (Check & Illegal Moves)",
+                sec_2_li1: "<strong>Assassination Notice:</strong> If your King enters enemy range, a <strong>'🚨 WARNING: King Targeted!'</strong> alert appears ONLY on your screen. The enemy doesn't know!",
+                sec_2_li2: "<strong>No Suicide Moves:</strong> Moving your King into danger or leaving it exposed is <strong>locked by the system and cannot be selected.</strong>",
+                sec_3_title: "🔥 3. Late-Game Sudden Death (Fog Clears)",
+                sec_3_desc: "The moment either condition is met, <strong>all fog vanishes instantly</strong>, revealing the entire board for a final open showdown!",
+                sec_3_li1: "The match exceeds <strong>80 total turns</strong>.",
+                sec_3_li2: "The total remaining pieces on both sides drop to <strong>10 or fewer</strong>.",
+                sec_4_title: "🏁 4. Victory & Draw Conditions",
+                sec_4_li1: "<strong>Checkmate (Victory):</strong> Put the enemy King in check with no escape squares to instantly end the game and win!",
+                sec_4_li2: "<strong>Stalemate (Draw):</strong> If it's your turn and you have no legal moves left (all moves would be suicide), the game ends in a <strong>Draw</strong>.",
+                sec_4_li3: "<strong>Insufficient Material (Draw):</strong> If only the two Kings remain, it's an immediate <strong>Draw</strong> as victory is impossible.",
+                sec_5_title: "🤖 5. AI Difficulty Breakdown",
+                sec_5_li1: "<strong>🟢 Lv.1 Easy:</strong> For practice. Makes random moves and ignores check opportunities. In Sudden Death, it loses motivation and walks into danger.",
+                sec_5_li2: "<strong>🟠 Lv.2 Normal:</strong> Tracks the 'footprints' (heat map) of your last moved square, hunting you from the dark. Charges straight for your King in Sudden Death.",
+                sec_5_li3: "<strong>🔴 Lv.3 Hardcore:</strong> For pros. Sees through the fog entirely, using <strong>Minimax (Alpha-Beta) to calculate 3 moves ahead</strong>. Instantly calculates perfect checkmate routes in Sudden Death."
             },
             zh: {
-                lobby_title: "🌫️ 迷雾象棋 大厅", btn_test: "♟️ 测试游戏画面",
+                lobby_title: "🌫️ 迷雾象棋 大厅", btn_rules: "📖 查看规则与AI说明",
                 create_room: "🔑 创建新房间", room_pwd_desc: "发送给朋友的密码", btn_create: "创建房间",
                 join_room: "🚪 加入已有房间", pwd_placeholder: "输入密码", btn_join: "加入房间",
                 play_ai: "🤖 单人游戏 (对战AI)", ai_desc: "请选择AI难度",
-                ai_1: "🟢 Lv.1 简单 (练习)", ai_2: "🟠 Lv.2 热源探测 (普通)", ai_3: "🔴 Lv.3 未来预测 (困难)"
+                ai_1: "🟢 Lv.1 简单 (练习)", ai_2: "🟠 Lv.2 热源探测 (普通)", ai_3: "🔴 Lv.3 未来预测 (困难)",
+                book_title: "📜 迷雾象棋 官方规则手册", btn_close_rules: "关闭规则",
+                sec_1_title: "👁️ 1. 基本规则（黑暗探索）",
+                sec_1_li1: "<strong>视野限制:</strong> 棋盘被浓雾笼罩。你只能看到<strong>“有自己棋子的格子”以及其“正前方1格”</strong>。",
+                sec_1_li2: "<strong>声纳探测:</strong> 当敌方棋子潜伏在你的移动范围内时，该格子会亮起红光并显示<strong>“⚠️”</strong>。",
+                sec_1_li3: "<strong>行动通知:</strong> 对方移动棋子时，屏幕会显示日志（如“对方移动了兵”），但具体位置保密。",
+                sec_2_title: "🚨 2. 暗杀警告（将军与禁止自杀步）",
+                sec_2_li1: "<strong>暗杀预告:</strong> 当你的国王进入敌方射程时，只有你的屏幕会显示<strong>“🚨 警告：国王被瞄准！”</strong>。对方并不知道国王的位置！",
+                sec_2_li2: "<strong>禁止自杀步:</strong> 故意将国王移入危险区域或使国王暴露的移动会<strong>被系统锁定，无法选择。</strong>",
+                sec_3_title: "🔥 3. 残局猝死赛（迷雾消散）",
+                sec_3_desc: "满足以下任一条件时，<strong>所有迷雾将瞬间消散</strong>，棋盘完全公开，进入纯脑力对决！",
+                sec_3_li1: "对局总回合数超过 <strong>80 回合</strong>。",
+                sec_3_li2: "双方场上剩余棋子总数减少至 <strong>10 个或以下</strong>。",
+                sec_4_title: "🏁 4. 胜负与平局规则",
+                sec_4_li1: "<strong>将死（胜利）:</strong> 将军敌方国王且对方无路可逃时，游戏立即结束并获得胜利！",
+                sec_4_li2: "<strong>僵局（平局）:</strong> 轮到你的回合时，如果你没有任何可移动的合法棋子（所有移动均为自杀步），则判为<strong>平局</strong>。",
+                sec_4_li3: "<strong>兵力不足（平局）:</strong> 如果棋盘上只剩下两个国王，因绝对无法分出胜负，立即判为<strong>平局</strong>。",
+                sec_5_title: "🤖 5. AI 难度级别解析",
+                sec_5_li1: "<strong>🟢 Lv.1 简单:</strong> 供练习使用。移动随机且经常错过将军机会。进入猝死赛后会失去斗志，主动送命。",
+                sec_5_li2: "<strong>🟠 Lv.2 普通:</strong> 记忆你上一回合移动格子的“足迹（热源）”，在黑暗中紧追不舍。进入猝死赛后直奔国王而来。",
+                sec_5_li3: "<strong>🔴 Lv.3 困难:</strong> 适合高玩。完全透视迷雾，使用 <strong>Minimax (Alpha-Beta) 算法预判未来3步</strong>。进入猝死赛后开启最短绝杀计算。"
             }
         };
 
@@ -82,7 +229,7 @@
         function applyLang() {
             const t = dictLobby[langs[currentLangIdx]];
             document.getElementById('lang-label').innerText = langLabels[currentLangIdx];
-            localStorage.setItem('chess_lang_idx', currentLangIdx); // 設定を保存
+            localStorage.setItem('chess_lang_idx', currentLangIdx); // 設定を対戦画面と共有
             
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
@@ -99,6 +246,8 @@
             applyLang();
         }
 
+        function openRules() { document.getElementById('rules-modal').style.display = 'flex'; }
+        function closeRules() { document.getElementById('rules-modal').style.display = 'none'; }
         function createRoom() { location.href = '/room/' + encodeURIComponent(document.getElementById('generated-id').value); }
         function joinRoom() {
             const roomId = document.getElementById('room-input').value.trim();
@@ -109,7 +258,7 @@
             location.href = '/room/AI_' + level + '_' + Math.random().toString(36).substr(2, 6); 
         }
 
-        // ロビー起動時に言語設定を適用
+        // ロビー起動時に言語設定を自動適用
         document.addEventListener('DOMContentLoaded', applyLang);
     </script>
 </body>
