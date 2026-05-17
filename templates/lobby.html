@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="視界が1マスしかない極限の心理戦！ブラウザで無料で遊べるオンライン『暗殺霧チェス』。">
     <title>暗殺霧チェス - ロビー</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
@@ -13,133 +12,105 @@
         .btn-join { background-color: #9b59b6; width: 95%; color: white;}
         hr { border: 0; height: 1px; background: #5d6d7e; margin: 20px 0; }
         .ai-buttons-container { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-        
-        /* 📜 スクロール可能な詳細ルール用のスタイル */
-        .rules-box-detail {
-            max-height: 65vh;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-        .rules-section {
-            background: #233140;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            border-left: 4px solid #f1c40f;
-        }
-        .rules-section h4 {
-            margin-top: 0;
-            margin-bottom: 8px;
-            color: #f1c40f;
-            font-size: 15px;
-        }
-        .rules-section p, .rules-section ul {
-            margin: 0;
-            font-size: 13px;
-            line-height: 1.5;
-            color: #ecf0f1;
-            padding-left: 15px;
-        }
-        .rules-section ul { padding-left: 20px; }
+        .top-bar-buttons { display: flex; justify-content: flex-end; padding: 10px; max-width: 350px; margin: 0 auto; }
+        .icon-btn { background: rgba(0,0,0,0.2); color: var(--text-color); padding: 8px 12px; font-size: 14px; border-radius: 5px; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="rules-modal" class="switch-overlay" style="display: none;">
-        <div class="switch-box" style="padding: 20px; width: 90%; max-width: 450px; text-align: left; color: #ecf0f1;">
-            <h3 style="color: #f1c40f; text-align: center; margin-top: 0; margin-bottom: 15px;">📜 暗殺霧チェス 公式ルールブック</h3>
-            
-            <div class="rules-box-detail">
-                <div class="rules-section">
-                    <h4>👁️ 1. 基本ルール（暗闇の探索）</h4>
-                    <ul>
-                        <li><strong>視界の制限:</strong> 盤面は深い霧に包まれており、見えるのは<strong>「自分の駒があるマス」とその「正面1マス」</strong>だけです。</li>
-                        <li><strong>索敵ソナー:</strong> 自分の駒が動かせる範囲に敵が潜んでいる場合、そのマスが赤く光り<strong>「⚠️」</strong>と表示されます。</li>
-                        <li><strong>行動通知:</strong> 相手が駒を動かすと、画面に「相手がポーンを動かしました」等のログが出ます（場所は秘密です）。</li>
-                    </ul>
-                </div>
-
-                <div class="rules-section">
-                    <h4>🚨 2. 暗殺予告（王手と自殺手の禁止）</h4>
-                    <ul>
-                        <li><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分側の画面にだけ<strong>「🚨 警告：キングが狙われています！」</strong>と表示されます。相手にはバレていません！</li>
-                        <li><strong>自殺手の禁止:</strong> キングがわざと敵の攻撃範囲に飛び込む手や、味方のキングを危険にさらす手（自殺手）は<strong>システムでロックされ、選択できなくなります。</strong></li>
-                    </ul>
-                </div>
-
-                <div class="rules-section">
-                    <h4>🔥 3. 終盤サドンデス（霧の消滅）</h4>
-                    <p>以下のいずれかの条件を満たした瞬間、<strong>全ての霧が晴れて盤面が完全公開</strong>になり、ガチの公開頭脳戦へ移行します！</p>
-                    <ul>
-                        <li>対局が<strong>合計 80 ターン</strong>を超えた時</li>
-                        <li>お互いの生き残っている駒が<strong>合計 10 個以下</strong>になった時</li>
-                    </ul>
-                </div>
-
-                <div class="rules-section">
-                    <h4>🏁 4. 勝敗と決着ルール（無限ループ防止）</h4>
-                    <ul>
-                        <li><strong>チェックメイト（勝利）:</strong> 敵のキングを王手し、どこにも逃げられない状態に追い詰めればその瞬間に強制終了し、勝利となります！</li>
-                        <li><strong>ステイルメイト（引き分け）:</strong> 王手はされていないが、自分の番に動かせる駒が1つもない（自殺手しか残っていない）場合は、手詰まりで<strong>引き分け</strong>となります。</li>
-                        <li><strong>戦力不足（引き分け）:</strong> 盤面にキング2人だけしか残らなくなった場合、絶対に決着がつかないため即座に<strong>引き分け</strong>になります。</li>
-                    </ul>
-                </div>
-
-                <div class="rules-section" style="border-left-color: #9b59b6;">
-                    <h4>🤖 5. 対AI戦・難易度レベル解説</h4>
-                    <ul>
-                        <li><strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。</li>
-                        <li><strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。</li>
-                        <li><strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 15px;">
-                <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin: 0; width: 100%;">ルールを閉じる</button>
-            </div>
-        </div>
+    <div class="top-bar-buttons">
+        <button class="icon-btn" onclick="cycleLanguage()">🌐 <span id="lang-label">日本語</span></button>
     </div>
 
-    <h1>🌫️ 暗殺霧チェス ロビー</h1>
-    <button class="btn-rules" onclick="openRules()" style="max-width: 350px;">📖 ルール・AI解説を確認する</button>
+    <h1 data-i18n="lobby_title">🌫️ 暗殺霧チェス ロビー</h1>
+    <button class="btn-rules" onclick="location.href='/room/AI_1_rules'" style="max-width: 350px; background-color: #2ecc71;" data-i18n="btn_test">♟️ 試しにゲーム画面を見てみる</button>
 
     <div class="box">
-        <h3 style="margin-top: 0;">🔑 新しく部屋を作る</h3>
-        <p style="color: #bdc3c7; font-size: 12px; margin-bottom: 5px;">友達に送るパスワード</p>
+        <h3 style="margin-top: 0;" data-i18n="create_room">🔑 新しく部屋を作る</h3>
+        <p style="color: #bdc3c7; font-size: 12px; margin-bottom: 5px;" data-i18n="room_pwd_desc">友達に送るパスワード</p>
         <input type="text" id="generated-id" value="{{ suggested_id }}" readonly style="background-color: #2c3e50; color: #f1c40f; font-weight: bold;">
-        <button class="btn-create" onclick="createRoom()">部屋を作る</button>
+        <button class="btn-create" onclick="createRoom()" data-i18n="btn_create">部屋を作る</button>
 
         <hr>
 
-        <h3 style="margin-top: 0;">🚪 既存の部屋に入る</h3>
-        <input type="text" id="room-input" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')joinRoom()">
-        <button class="btn-join" onclick="joinRoom()">合流する</button>
+        <h3 style="margin-top: 0;" data-i18n="join_room">🚪 既存の部屋に入る</h3>
+        <input type="text" id="room-input" placeholder="パスワードを入力" data-i18n-placeholder="pwd_placeholder" onkeydown="if(event.key==='Enter')joinRoom()">
+        <button class="btn-join" onclick="joinRoom()" data-i18n="btn_join">合流する</button>
 
         <hr>
 
-        <h3 style="margin-top: 0;">🤖 1人で遊ぶ (CPU戦)</h3>
-        <p style="color: #bdc3c7; font-size: 12px; margin-bottom: 10px;">相手の強さを選んでください</p>
+        <h3 style="margin-top: 0;" data-i18n="play_ai">🤖 1人で遊ぶ (CPU戦)</h3>
+        <p style="color: #bdc3c7; font-size: 12px; margin-bottom: 10px;" data-i18n="ai_desc">相手の強さを選んでください</p>
         
         <div class="ai-buttons-container">
-            <button class="btn-ai-1" onclick="playAI(1)">🟢 Lv.1 接待プレイ（練習用）</button>
-            <button class="btn-ai-2" onclick="playAI(2)">🟠 Lv.2 熱源探知（通常）</button>
-            <button class="btn-ai-3" onclick="playAI(3)">🔴 Lv.3 未来予知（ガチ勢向け）</button>
+            <button class="btn-ai-1" onclick="playAI(1)" data-i18n="ai_1">🟢 Lv.1 接待プレイ（練習用）</button>
+            <button class="btn-ai-2" onclick="playAI(2)" data-i18n="ai_2">🟠 Lv.2 熱源探知（通常）</button>
+            <button class="btn-ai-3" onclick="playAI(3)" data-i18n="ai_3">🔴 Lv.3 未来予知（ガチ勢向け）</button>
         </div>
     </div>
 
     <script>
-        function openRules() { document.getElementById('rules-modal').style.display = 'flex'; }
-        function closeRules() { document.getElementById('rules-modal').style.display = 'none'; }
+        // 多言語辞書
+        const dictLobby = {
+            ja: {
+                lobby_title: "🌫️ 暗殺霧チェス ロビー", btn_test: "♟️ 試しにゲーム画面を見てみる",
+                create_room: "🔑 新しく部屋を作る", room_pwd_desc: "友達に送るパスワード", btn_create: "部屋を作る",
+                join_room: "🚪 既存の部屋に入る", pwd_placeholder: "パスワードを入力", btn_join: "合流する",
+                play_ai: "🤖 1人で遊ぶ (CPU戦)", ai_desc: "相手の強さを選んでください",
+                ai_1: "🟢 Lv.1 接待プレイ（練習用）", ai_2: "🟠 Lv.2 熱源探知（通常）", ai_3: "🔴 Lv.3 未来予知（ガチ勢向け）"
+            },
+            en: {
+                lobby_title: "🌫️ Fog Chess Lobby", btn_test: "♟️ Test the Game Screen",
+                create_room: "🔑 Create New Room", room_pwd_desc: "Password to share with a friend", btn_create: "Create Room",
+                join_room: "🚪 Join Existing Room", pwd_placeholder: "Enter Password", btn_join: "Join Room",
+                play_ai: "🤖 Play vs AI", ai_desc: "Select AI Difficulty",
+                ai_1: "🟢 Lv.1 Easy (Practice)", ai_2: "🟠 Lv.2 Heat Tracker (Normal)", ai_3: "🔴 Lv.3 Oracle (Hardcore)"
+            },
+            zh: {
+                lobby_title: "🌫️ 迷雾象棋 大厅", btn_test: "♟️ 测试游戏画面",
+                create_room: "🔑 创建新房间", room_pwd_desc: "发送给朋友的密码", btn_create: "创建房间",
+                join_room: "🚪 加入已有房间", pwd_placeholder: "输入密码", btn_join: "加入房间",
+                play_ai: "🤖 单人游戏 (对战AI)", ai_desc: "请选择AI难度",
+                ai_1: "🟢 Lv.1 简单 (练习)", ai_2: "🟠 Lv.2 热源探测 (普通)", ai_3: "🔴 Lv.3 未来预测 (困难)"
+            }
+        };
+
+        const langs = ['ja', 'en', 'zh'];
+        const langLabels = ['日本語', 'English', '中文'];
+        let currentLangIdx = parseInt(localStorage.getItem('chess_lang_idx') || '0');
+
+        function applyLang() {
+            const t = dictLobby[langs[currentLangIdx]];
+            document.getElementById('lang-label').innerText = langLabels[currentLangIdx];
+            localStorage.setItem('chess_lang_idx', currentLangIdx); // 設定を保存
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.innerHTML = t[key];
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (t[key]) el.placeholder = t[key];
+            });
+        }
+
+        function cycleLanguage() {
+            currentLangIdx = (currentLangIdx + 1) % langs.length;
+            applyLang();
+        }
+
         function createRoom() { location.href = '/room/' + encodeURIComponent(document.getElementById('generated-id').value); }
         function joinRoom() {
             const roomId = document.getElementById('room-input').value.trim();
             if (roomId) location.href = '/room/' + encodeURIComponent(roomId);
-            else alert('パスワードを入力してください！');
+            else alert('パスワードを入力してください / Please enter a password');
         }
         function playAI(level) { 
             location.href = '/room/AI_' + level + '_' + Math.random().toString(36).substr(2, 6); 
         }
+
+        // ロビー起動時に言語設定を適用
+        document.addEventListener('DOMContentLoaded', applyLang);
     </script>
 </body>
 </html>
