@@ -16,59 +16,72 @@
         .check-warning { color: #ff4757; font-size: 16px; font-weight: bold; display: inline-block; margin-top: 10px; animation: check-blink 0.8s infinite; border: 2px solid #ff4757; padding: 5px 10px; border-radius: 5px; background-color: rgba(255, 71, 87, 0.1); }
         .waiting-text { color: #bdc3c7; font-size: 14px; font-weight: normal; margin-top: 5px; display: block; }
         .my-turn-text { color: #2ecc71 !important; font-weight: bold; font-size: 1.1em; }
+
+        /* 🌟 チュートリアルスライド専用アニメーションCSS */
+        .tut-slide { display: none; animation: tutFadeIn 0.4s ease; min-height: 420px; }
+        .tut-slide.active { display: block; }
+        .tut-img-box { width: 100%; height: 200px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; margin-bottom: 15px; }
+        .tut-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .tut-anim-area { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .mini-grid { display: grid; gap: 4px; margin: 0 auto; }
+        .grid-3x3 { grid-template-columns: repeat(3, 1fr); width: 150px; }
+        .grid-4x4 { grid-template-columns: repeat(4, 1fr); width: 200px; }
+        .m-sq { width: 46px; height: 46px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 28px; border-radius: 4px; }
+        .m-sq.fog { background: #1e293b; color: transparent !important; }
+        @keyframes pawnWalk { 0% { transform: translateY(0); } 100% { transform: translateY(-50px); } }
+        @keyframes revealRook { 0%, 80% { opacity: 0; background: #1e293b; color: transparent; } 100% { opacity: 1; background: #ecf0f1; color: #2c3e50; } }
+        .pawn-move { animation: pawnWalk 2s infinite alternate ease-in-out; }
+        .rook-reveal { animation: revealRook 2s infinite alternate ease-in-out; }
+        .enemy-faint { opacity: 0.15; } 
+        @keyframes sonarPing { 0% { background: #1e293b; color: transparent; } 100% { background: rgba(231, 76, 60, 0.8); color: #fff; box-shadow: inset 0 0 10px #ff0000; } }
+        .sonar-hit { animation: sonarPing 1s infinite alternate; }
+        @keyframes tutFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-   <div id="unified-rules-modal" class="switch-overlay" style="display: none;">
-        <div class="switch-box" style="padding: 20px; width: 95%; max-width: 550px; text-align: left; color: #ecf0f1; min-height: 500px; display: flex; flex-direction: column;">
-            <div id="tutorial-slides-container" style="flex-grow: 1; position: relative; overflow: hidden;">
-                
+    <div id="unified-rules-modal" class="switch-overlay" style="display: none;">
+        <div class="switch-box" style="padding: 20px; width: 95%; max-width: 500px; text-align: left; color: #ecf0f1; min-height: 550px; display: flex; flex-direction: column;">
+            <div id="slides-container" style="flex-grow: 1;">
                 <div class="tut-slide active">
-                    <h3 style="color: #f1c40f; text-align: center;" data-i18n="tut_1_title">⚔️ 1. 歴史を再現する戦略</h3>
-                    <div class="tut-img-box"><img src="http://googleusercontent.com/image_collection/image_retrieval/3099264142655598093" style="width:100%; border-radius:8px;"></div>
-                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_1_desc">このゲームは1805年、ナポレオンが朝霧を利用して敵を奇襲した<strong>「アウステルリッツの戦い」</strong>をモデルにしています。霧を制する者が戦場を制します。</p>
+                    <h3 style="color: #f1c40f; text-align: center; margin-bottom: 10px;" data-i18n="tut_1_title">アウステルリッツの戦い</h3>
+                    <div class="tut-img-box"><img src="https://images.unsplash.com/photo-1599839619722-39751411ea63?q=80&w=800&auto=format&fit=crop" alt="History"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_1_desc">このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。</p>
                 </div>
-
                 <div class="tut-slide">
-                    <h3 style="color: #cbd5e1; text-align: center;" data-i18n="tut_2_title">🌫️ 2. 戦場の霧の正体</h3>
-                    <div class="tut-img-box"><img src="http://googleusercontent.com/image_collection/image_retrieval/3140239736827284283" style="width:100%; border-radius:8px; filter: contrast(1.2);"></div>
-                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_2_desc">盤面は深い霧に包まれており、基本的には敵の場所がわかりません。これは単なる目隠しではなく、<strong>情報戦</strong>を象徴しています。</p>
+                    <h3 style="color: #cbd5e1; text-align: center; margin-bottom: 10px;" data-i18n="tut_2_title">戦場の霧とは</h3>
+                    <div class="tut-img-box"><img src="https://images.unsplash.com/photo-1485236715568-ddc5ee6ca227?q=80&w=800&auto=format&fit=crop" alt="Fog"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_2_desc">盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような陣形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。</p>
                 </div>
-
                 <div class="tut-slide">
-                    <h3 style="color: #2ecc71; text-align: center;" data-i18n="tut_3_title">👁️ 3. 視界の確保</h3>
-                    <div class="tut-anim-board">
-                        <div class="tut-grid">
-                            <div class="tut-sq fog"></div><div class="tut-sq fog"></div><div class="tut-sq fog"></div>
-                            <div class="tut-sq fog"></div><div class="tut-sq target-piece" style="opacity:0;">♜</div><div class="tut-sq fog"></div>
-                            <div class="tut-sq my-piece animate-move">♙</div><div class="tut-sq"></div><div class="tut-sq"></div>
+                    <h3 style="color: #2ecc71; text-align: center; margin-bottom: 10px;" data-i18n="tut_3_title">視界の確保</h3>
+                    <div class="tut-anim-area">
+                        <div class="mini-grid grid-3x3">
+                            <div class="m-sq fog"></div><div class="m-sq rook-reveal">♜</div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq"></div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq pawn-move">♙</div><div class="m-sq fog"></div>
                         </div>
                     </div>
-                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_3_desc">自分の駒と<strong>その正面1マス</strong>のみが見えます。駒を動かして霧を晴らし、潜伏している敵をあぶり出しましょう！</p>
+                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_3_desc">自分の駒と<strong>その正面1マス</strong>のみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！</p>
                 </div>
-
                 <div class="tut-slide">
-                    <h3 style="color: #e74c3c; text-align: center;" data-i18n="tut_4_title">📡 4. ソナーと遮蔽の法則</h3>
-                    <div class="tut-anim-board">
-                        <div class="tut-grid">
-                            <div class="tut-sq fog sonar-glow">⚠️</div><div class="tut-sq fog"></div><div class="tut-sq fog"></div>
-                            <div class="tut-sq fog"></div><div class="tut-sq"></div><div class="tut-sq fog"></div>
-                            <div class="tut-sq my-piece">♗</div><div class="tut-sq"></div><div class="tut-sq my-piece">♟</div>
+                    <h3 style="color: #e74c3c; text-align: center; margin-bottom: 10px;" data-i18n="tut_4_title">ソナーと遮蔽の法則</h3>
+                    <div class="tut-anim-area">
+                        <div class="mini-grid grid-4x4">
+                            <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq enemy-faint">♞</div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                            <div class="m-sq fog sonar-hit">⚠️</div><div class="m-sq enemy-faint">♟</div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                            <div class="m-sq">♗</div><div class="m-sq"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
                         </div>
                     </div>
-                    <p style="font-size: 14px; margin-top: 10px; line-height: 1.4; font-size: 13px;" data-i18n="tut_4_desc">
-                        移動範囲に敵がいるとマスが<strong>⚠️</strong>と光ります。ただし、最前線の駒のみがソナーを発揮し、後ろの駒はソナーに反応しません（遮蔽の法則）。
-                    </p>
+                    <p style="font-size: 13px; margin-top: 10px;" data-i18n="tut_4_desc">移動先に敵がいれば<strong>⚠️</strong>と光りますが、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません。</p>
                 </div>
-
             </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
-                <button class="icon-btn" onclick="prevSlide()" id="prev-tut-btn" style="opacity: 0.5;">← <span data-i18n="btn_prev">戻る</span></button>
-                <div id="slide-indicator" style="font-size: 14px; font-weight: bold; color: #f1c40f;">1 / 4</div>
-                <button class="icon-btn" onclick="nextSlide()" id="next-tut-btn" style="background: #3498db; color: white;"><span data-i18n="btn_next">次へ</span> →</button>
-                <button class="ready-btn" onclick="closeUnifiedRules()" id="finish-tut-btn" style="display:none; width: auto; padding: 10px 20px; margin: 0;" data-i18n="btn_finish">戦場へ</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                <button class="icon-btn" onclick="prevSlide()" id="prev-tut-btn">← <span data-i18n="btn_prev">戻る</span></button>
+                <div id="slide-count" style="font-family: 'Cinzel', serif; color: #f1c40f;">1 / 4</div>
+                <button class="icon-btn" onclick="nextSlide()" id="next-tut-btn" style="background:#3498db; color:white;"><span data-i18n="btn_next">次へ</span> →</button>
+                <button class="ready-btn" onclick="closeUnifiedRules()" id="finish-tut-btn" style="display:none; width:auto; padding:10px 20px; margin:0;" data-i18n="btn_finish">戦場へ</button>
             </div>
         </div>
     </div>
@@ -95,12 +108,10 @@
                 <button class="icon-btn" onclick="cycleTheme()">🎨 <span data-i18n="btn_theme">テーマ</span></button>
                 <button class="icon-btn" onclick="cycleLanguage()">🌐 <span id="lang-label">日本語</span></button>
             </div>
-            
             <h1 style="margin-bottom: 5px;" data-i18n="app_title">🌫️ 暗殺霧チェス</h1>
             <p style="color: var(--border-color); font-size: 14px; margin-top: 0;"><span data-i18n="room_label">ルーム:</span> <strong style="color: #f1c40f; font-size: 18px; letter-spacing: 1px;">{{ room_id }}</strong></p>
             <hr style="border: 0; height: 1px; background: var(--border-color); margin: 15px 0;">
             <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 16px; margin-bottom: 8px;" data-i18n="role_checking">あなたは: 判定中...</p>
-            
             <div class="turn-box" id="turn-box-container">
                 <h3 id="turn-display" style="font-size: 15px; margin: 0; line-height: 1.6;" data-i18n="loading">読み込み中...</h3>
             </div>
@@ -117,7 +128,6 @@
                     <div id="enemy-captured" class="captured-pieces"></div>
                 </div>
             </div>
-
             <div class="controls" style="display: flex; flex-direction: column; gap: 8px;">
                 <div style="display: flex; gap: 10px;">
                     <button onclick="resetGame()" style="background-color: #95a5a6; flex: 1;" data-i18n="btn_reset">リセット</button>
@@ -128,32 +138,6 @@
     </div>
 
     <script>
-        // 🌟 スライド制御のJavaScript
-        let currentSlideIdx = 0;
-        function updateSlideDisplay() {
-            const slides = document.querySelectorAll('.tut-slide');
-            const total = slides.length;
-            slides.forEach((s, i) => s.classList.toggle('active', i === currentSlideIdx));
-            
-            document.getElementById('slide-indicator').innerText = `${currentSlideIdx + 1} / ${total}`;
-            document.getElementById('prev-tut-btn').style.opacity = currentSlideIdx === 0 ? "0.3" : "1";
-            document.getElementById('next-tut-btn').style.display = currentSlideIdx === total - 1 ? "none" : "block";
-            document.getElementById('finish-tut-btn').style.display = currentSlideIdx === total - 1 ? "block" : "none";
-        }
-        function nextSlide() {
-            const total = document.querySelectorAll('.tut-slide').length;
-            if (currentSlideIdx < total - 1) { currentSlideIdx++; updateSlideDisplay(); }
-        }
-        function prevSlide() {
-            if (currentSlideIdx > 0) { currentSlideIdx--; updateSlideDisplay(); }
-        }
-        // ルールを開く時にスライドをリセット
-        function openUnifiedRules() { 
-            currentSlideIdx = 0;
-            updateSlideDisplay();
-            document.getElementById('unified-rules-modal').style.display = 'flex'; 
-        }
-        
         const roomId = "{{ room_id }}";
         if (!localStorage.getItem('chess_player_id')) localStorage.setItem('chess_player_id', 'p_' + Math.random().toString(36).substr(2, 9));
         const playerId = localStorage.getItem('chess_player_id');
@@ -161,17 +145,11 @@
 
         const themes = ['theme-dark', 'theme-light', 'theme-wood'];
         let currentThemeIdx = parseInt(localStorage.getItem('chess_theme_idx') || '0');
-        function applyTheme() {
-            document.body.className = themes[currentThemeIdx];
-            localStorage.setItem('chess_theme_idx', currentThemeIdx);
-        }
-        function cycleTheme() {
-            currentThemeIdx = (currentThemeIdx + 1) % themes.length;
-            applyTheme();
-        }
+        function applyTheme() { document.body.className = themes[currentThemeIdx]; localStorage.setItem('chess_theme_idx', currentThemeIdx); }
+        function cycleTheme() { currentThemeIdx = (currentThemeIdx + 1) % themes.length; applyTheme(); }
         applyTheme();
 
-       const dict = {
+        const dict = {
             ja: {
                 app_title: "🌫️ 暗殺霧チェス", btn_theme: "テーマ", room_label: "ルーム:", role_checking: "あなたは: 判定中...", loading: "読み込み中...",
                 grave_yours: "⚔️ あなたが奪った駒", grave_enemy: "💀 相手に奪われた駒", btn_reset: "リセット", btn_leave: "退出する",
@@ -182,11 +160,11 @@
                 king_alert: "⚠️ キング公開中！（次ターンで隠れます）", king_count: "キング公開まで あと {0} ターン",
                 win_dom: "サドンデスの死闘を制し、完全なる覇者となった！", win_silent: "暗闇からの完璧なる奇襲。姿なき暗殺成功！", lose_desc: "暗闇の中に消え去った...。もう一度挑戦しよう！", draw_desc: "お互いに手詰まり、または戦力不足です。",
                 p_p: "ポーン ♟", p_r: "ルーク ♜", p_n: "ナイト ♞", p_b: "ビショップ ♝", p_q: "クイーン ♛", p_k: "キング ♚", next_turn: "次は {0} の番です",
-                // 🌟 統合ルールの辞書
-                uni_title: "📜 遊び方＆詳細ルール", btn_open_uni: "📖 遊び方とルールを確認", btn_close_uni: "戦場に戻る",
-                uni_fog_title: "🌫️ 1. 霧の視界と基本ルール", uni_fog_1: "相手のキングを取れば勝利です。", uni_fog_2: "自分の駒とその正面1マスのみが見えます。", uni_fog_3: "相手が駒を動かした時、種類だけ通知されます（場所は秘密）。",
-                uni_sonar_title: "📡 2. 索敵ソナーと暗殺予告", uni_sonar_1: "攻撃範囲に敵がいるとマスが<strong>赤く発光（⚠️）</strong>します。", uni_sonar_2: "姿が見えている敵が赤く光った場合、その敵を攻撃できます！", uni_sonar_3: "自分のキングが狙われると<strong>自分にだけ警告</strong>が出ます。", uni_sonar_4: "自殺手（キングを危険に晒す移動）はシステムで禁止されます。",
-                uni_sudden_title: "💀 3. サドンデス（霧の消滅）", uni_sudden_1: "80ターン経過、または残り駒が10個以下で全ての霧が晴れます。", uni_sudden_2: "5ターンごとに一瞬だけ、お互いのキングの場所が公開されます。"
+                uni_title: "📜 遊び方＆詳細ルール", btn_open_uni: "📖 遊び方とルールを確認", btn_close_uni: "戦場に戻る", btn_prev: "戻る", btn_next: "次へ", btn_finish: "戦場へ",
+                tut_1_title: "アウステルリッツの戦い", tut_1_desc: "このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。",
+                tut_2_title: "戦場の霧とは", tut_2_desc: "盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような阵形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。",
+                tut_3_title: "視界の確保", tut_3_desc: "自分の駒とその正面1マスのみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！",
+                tut_4_title: "ソナーと遮蔽の法則", tut_4_desc: "移動先に敵がいれば⚠️と光りますが、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません。"
             },
             en: {
                 app_title: "🌫️ Fog Chess", btn_theme: "Theme", room_label: "Room:", role_checking: "You are: Checking...", loading: "Loading...",
@@ -198,10 +176,11 @@
                 king_alert: "⚠️ Kings Revealed! (Hidden next turn)", king_count: "Kings revealed in {0} turn(s)",
                 win_dom: "You dominated the sudden death and became the true champion!", win_silent: "A perfect ambush from the dark. Silent assassination successful!", lose_desc: "You faded into the darkness... Try again!", draw_desc: "Stalemate or insufficient material.",
                 p_p: "Pawn ♟", p_r: "Rook ♜", p_n: "Knight ♞", p_b: "Bishop ♝", p_q: "Queen ♛", p_k: "King ♚", next_turn: "Next is {0}'s turn",
-                uni_title: "📜 How to Play & Rules", btn_open_uni: "📖 View Rules", btn_close_uni: "Return to Battle",
-                uni_fog_title: "🌫️ 1. Fog & Basics", uni_fog_1: "Capture the enemy King to win.", uni_fog_2: "You only see your pieces and 1 square directly in front.", uni_fog_3: "When the enemy moves, you are notified of the piece type.",
-                uni_sonar_title: "📡 2. Sonar & Alerts", uni_sonar_1: "Squares glow <strong>red (⚠️)</strong> if an enemy is in attack range.", uni_sonar_2: "If a visible enemy glows red, you can attack them!", uni_sonar_3: "A <strong>warning appears ONLY to you</strong> if your King is targeted.", uni_sonar_4: "Suicide moves (exposing your King) are locked.",
-                uni_sudden_title: "💀 3. Sudden Death", uni_sudden_1: "Fog clears completely after 80 turns or when 10 pieces remain.", uni_sudden_2: "Kings' positions are briefly revealed every 5 turns."
+                uni_title: "📜 How to Play & Rules", btn_open_uni: "📖 View Rules", btn_close_uni: "Return to Battle", btn_prev: "Back", btn_next: "Next", btn_finish: "Battle!",
+                tut_1_title: "Battle of Austerlitz", tut_1_desc: "Inspired by Napoleon's 1805 tactical masterpiece. Use the morning mist as your ultimate weapon and shield.",
+                tut_2_title: "The Fog of War", tut_2_desc: "The deep fog represents incomplete information. You won't know where the enemy lurks until you take a step.",
+                tut_3_title: "Vision System", tut_3_desc: "You can see your piece and 1 square directly in front. Move forward to clear the fog and reveal enemies!",
+                tut_4_title: "Sonar & Occlusion", tut_4_desc: "If an enemy is in range, the square glows ⚠️. However, the first enemy blocks the sonar from reaching anyone behind them."
             },
             zh: {
                 app_title: "🌫️ 迷雾象棋", btn_theme: "主题", room_label: "房间:", role_checking: "你是: 判定中...", loading: "加载中...",
@@ -213,10 +192,11 @@
                 king_alert: "⚠️ 国王暴露中！（下回合隐藏）", king_count: "距离国王暴露还有 {0} 回合",
                 win_dom: "在死亡淘汰赛中获胜，成为了真正的霸主！", win_silent: "来自黑暗的完美伏击。无声暗杀成功！", lose_desc: "你消失在黑暗中...再试一次吧！", draw_desc: "双方僵局或兵力不足，平局。",
                 p_p: "兵 ♟", p_r: "车 ♜", p_n: "马 ♞", p_b: "象 ♝", p_q: "后 ♛", p_k: "王 ♚", next_turn: "接下来是 {0} 的回合",
-                uni_title: "📜 玩法与规则", btn_open_uni: "📖 查看玩法与规则", btn_close_uni: "返回战场",
-                uni_fog_title: "🌫️ 1. 迷雾视野与基础", uni_fog_1: "吃掉对方国王即可获胜。", uni_fog_2: "只能看到自己的棋子和正前方1格。", uni_fog_3: "对方移动时只会通知棋子类型（位置保密）。",
-                uni_sonar_title: "📡 2. 声纳与警告", uni_sonar_1: "攻击范围内有敌人时，格子会<strong>亮红光（⚠️）</strong>。", uni_sonar_2: "如果可见的敌人亮起红光，代表可以攻击！", uni_sonar_3: "国王被瞄准时，<strong>只有你会收到警告</strong>。", uni_sonar_4: "系统会禁止自杀步（将国王置于险地）。",
-                uni_sudden_title: "💀 3. 猝死赛（迷雾消散）", uni_sudden_1: "80回合或剩余棋子在10个以下时，迷雾完全消散。", uni_sudden_2: "每5回合会瞬间公开双方国王的位置。"
+                uni_title: "📜 玩法与规则", btn_open_uni: "📖 查看玩法与规则", btn_close_uni: "返回战场", btn_prev: "上一步", btn_next: "下一步", btn_finish: "开始",
+                tut_1_title: "奥斯特利茨战役", tut_1_desc: "以1805年拿破仑利用晨雾击败联军的战役为原型。迷雾是您最强大的武器和护盾。",
+                tut_2_title: "什么是战场迷雾", tut_2_desc: "笼罩棋盤的深霧代表信息的不完全性。在迈出步伐之前，您无法得知敌人的踪跡。",
+                tut_3_title: "视野系统", tut_3_desc: "您可以看到自己的棋子及其正前方1格。前进以驱散迷雾并发现潜伏的敌人！",
+                tut_4_title: "声纳与遮蔽法则", tut_4_desc: "若移动范围内有敌军，格子会闪烁⚠️。但第一名敌人会阻挡声纳，使其无法探测到后方的目标。"
             }
         };
 
@@ -235,14 +215,23 @@
             });
             updateBoard(true);
         }
-        function cycleLanguage() {
-            currentLangIdx = (currentLangIdx + 1) % langs.length;
-            applyLang();
-        }
-        
-       function openUnifiedRules() { document.getElementById('unified-rules-modal').style.display = 'flex'; }
-       function closeUnifiedRules() { document.getElementById('unified-rules-modal').style.display = 'none'; }
+        function cycleLanguage() { currentLangIdx = (currentLangIdx + 1) % langs.length; applyLang(); }
         document.getElementById('result-overlay').onclick = function() { this.style.display = 'none'; }
+
+        /* 🌟 スライド制御用JavaScriptロジック */
+        let currentSlideIdx = 0;
+        function updateSlideDisplay() {
+            const slides = document.querySelectorAll('.tut-slide');
+            slides.forEach((s, i) => s.classList.toggle('active', i === currentSlideIdx));
+            document.getElementById('slide-count').innerText = `${currentSlideIdx + 1} / ${slides.length}`;
+            document.getElementById('prev-tut-btn').style.visibility = currentSlideIdx === 0 ? "hidden" : "visible";
+            document.getElementById('next-tut-btn').style.display = currentSlideIdx === slides.length - 1 ? "none" : "block";
+            document.getElementById('finish-tut-btn').style.display = currentSlideIdx === slides.length - 1 ? "block" : "none";
+        }
+        function nextSlide() { currentSlideIdx++; updateSlideDisplay(); }
+        function prevSlide() { currentSlideIdx--; updateSlideDisplay(); }
+        function openUnifiedRules() { currentSlideIdx = 0; updateSlideDisplay(); document.getElementById('unified-rules-modal').style.display = 'flex'; }
+        function closeUnifiedRules() { document.getElementById('unified-rules-modal').style.display = 'none'; }
 
         const icons = {
             "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔",
@@ -254,10 +243,7 @@
                 method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
             });
             const data = await response.json();
-            if (data.status === 'full') {
-                alert("Room is Full");
-                return false;
-            }
+            if (data.status === 'full') { alert("Room is Full"); return false; }
             myColor = data.color;
             applyLang();
             return true;
@@ -265,7 +251,6 @@
 
         async function updateBoard(forceUpdate = false) {
             if(!myColor && !forceUpdate) return;
-            
             const response = await fetch(`/get_game/${roomId}`, {
                 method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
             });
@@ -343,7 +328,6 @@
                 resultSubDesc.innerText = t.tap_to_reveal;
 
                 let turnTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
-                
                 let turnText = "";
                 if (isMyTurn) {
                     turnText = t.turn_now.replace("{0}", `<span class="my-turn-text">${turnTeam} (YOUR TURN)</span>`);
@@ -361,7 +345,6 @@
                     turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">${t.moved_notice.replace("{0}", pName)}</span>`;
                 }
 
-                // 🌟 修正箇所（186〜188行目付近）：交代画面の時は王手の赤い警告を出さないように修正！
                 if (data.is_check && !data.switching_turn) {
                     turnText += `<br><span class="check-warning">${t.check_warn}</span>`;
                 }
@@ -400,9 +383,7 @@
                     document.getElementById('next-player-text').innerText = t.next_turn.replace("{0}", nextTeam);
                     switchScreen.style.display = 'flex';
                 } else { switchScreen.style.display = 'none'; }
-            } else {
-                switchScreen.style.display = 'none';
-            }
+            } else { switchScreen.style.display = 'none'; }
             drawBoard(data);
         }
 
@@ -458,12 +439,7 @@
             location.href = '/';
         }
 
-        joinRoom().then(success => { 
-            if (success) { 
-                setInterval(updateBoard, 1000); 
-                updateBoard(); 
-            } 
-        });
+        joinRoom().then(success => { if (success) { setInterval(updateBoard, 1000); updateBoard(); } });
     </script>
 </body>
 </html>
