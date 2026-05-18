@@ -165,7 +165,7 @@ def check_game_over_status(room_id):
             room["winner"] = "DRAW_STALEMATE"
 
 # =====================================================================
-# === 5. 霧（視界）の計算システム（★バグ修正・ハイブリッドロックオン） ===
+# === 5. 霧（視界）の計算システム ===
 # =====================================================================
 def get_visible_board(room_id, player_color):
     room = get_or_create_room(room_id)
@@ -187,7 +187,6 @@ def get_visible_board(room_id, player_color):
     turn = player_color if player_color in ["W", "B"] else room["current_turn"]
     visible = [["fog" for _ in range(8)] for _ in range(8)]
     
-    # 【1回目のループ】まず、見えている駒と「目の前1マス」をすべて確定させる
     for r in range(8):
         for c in range(8):
             piece = board[r][c]
@@ -198,7 +197,6 @@ def get_visible_board(room_id, player_color):
                     front = board[r + direction][c]
                     visible[r + direction][c] = "empty" if front == "--" else front
                 
-    # 【2回目のループ】ソナーを乗せる（被ったらハイブリッド化する）
     for r in range(8):
         for c in range(8):
             piece = board[r][c]
@@ -207,12 +205,10 @@ def get_visible_board(room_id, player_color):
                 for mr, mc in valid_moves:
                     target = board[mr][mc]
                     if target != "--" and not target.startswith(turn):
-                        # すでに敵の姿が見えている場合は「_sonar」タグをくっつける（上書きしない）
                         if visible[mr][mc] not in ["fog", "sonar", "empty"]:
                             if not visible[mr][mc].endswith("_sonar"):
                                 visible[mr][mc] += "_sonar"
                         else:
-                            # 霧の中なら通常のソナー表示
                             visible[mr][mc] = "sonar"
 
     if room["turn_count"] // 2 > 0 and (room["turn_count"] // 2) % 5 == 0:
@@ -224,29 +220,9 @@ def get_visible_board(room_id, player_color):
     return visible
 
 # =====================================================================
-# === 6. 最強AI（レベル3）の頭脳：ミニマックス法 ===
+# === 6. 最強AI（レベル3）の頭脳：ミニマックス法（アルファベータ対応版） ===
 # =====================================================================
-def get_all_pseudo_moves(board, color):
-    moves = []
-    for r in range(8):
-        for c in range(8):
-            if board[r][c].startswith(color):
-                valid_destinations = get_valid_moves_for_board(board, r, c)
-                for dr, dc in valid_destinations:
-                    moves.append((r, c, dr, dc))
-    def move_priority(m):
-        tr, tc = m[2], m[3]
-        target = board[tr][tc]
-        if target != "--":
-            if target[1] == "K": return 100
-            elif target[1] == "Q": return 90
-            elif target[1] == "R": return 50
-            return 10
-        return 0
-    moves.sort(key=move_priority, reverse=True)
-    return moves
-
-def evaluate_board(board, room_id=None):
+def evaluate_board(board, is_sudden_death=False):
     piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90, "K": 10000}
     score = 0
     wk_alive = False
@@ -269,58 +245,71 @@ def evaluate_board(board, room_id=None):
     if not wk_alive: return 99999  
     if not bk_alive: return -99999 
     
-    if room_id and (game_rooms[room_id]["turn_count"] >= 80 or count_pieces(board) <= 10):
-        if wk_pos:
-            w_r, w_c = wk_pos
-            center_distance_r = max(3.5 - w_r, w_r - 3.5)
-            center_distance_c = max(3.5 - w_c, w_c - 3.5)
-            score += (center_distance_r + center_distance_c) * 15 
+    if is_sudden_death and wk_pos:
+        w_r, w_c = wk_pos
+        center_distance_r = max(3.5 - w_r, w_r - 3.5)
+        center_distance_c = max(3.5 - w_c, w_c - 3.5)
+        score += (center_distance_r + center_distance_c) * 15 
     return score
 
-def minimax(board, depth, alpha, beta, is_maximizing, room_id):
-    eval_score = evaluate_board(board, room_id)
-    if abs(eval_score) >= 90000 or depth == 0: return eval_score
-        
-    if is_maximizing: 
+def minimax(board, depth, alpha, beta, is_maximizing, is_sudden_death):
+    eval_score = evaluate_board(board, is_sudden_death)
+    if depth == 0 or eval_score >= 90000 or eval_score <= -90000:
+        return eval_score
+
+    if is_maximizing: # AI（黒）のターン：点数を最大化したい
         max_eval = -float('inf')
-        moves = get_all_pseudo_moves(board, "B")
-        if not moves: return eval_score
-        for move in moves:
-            r, c, mr, mc = move
-            captured = board[mr][mc]
-            board[mr][mc] = board[r][c]
-            board[r][c] = "--"
-            promoted = False
-            if board[mr][mc] == "BP" and mr == 7:
-                board[mr][mc] = "BQ"
-                promoted = True
-            eval = minimax(board, depth - 1, alpha, beta, False, room_id)
-            board[r][c] = "BP" if promoted else board[mr][mc]
-            board[mr][mc] = captured
-            max_eval = max(max_eval, eval)
-            alpha = max(alpha, eval)
-            if beta <= alpha: break 
-        return max_eval
-    else:
+        for r in range(8):
+            for c in range(8):
+                if board[r][c].startswith("B"):
+                    for mr, mc in get_legal_moves_for_board(board, r, c):
+                        captured = board[mr][mc]
+                        moving_piece = board[r][c]
+                        board[mr][mc] = moving_piece
+                        board[r][c] = "--"
+                        promoted = False
+                        if moving_piece == "BP" and mr == 7:
+                            board[mr][mc] = "BQ"
+                            promoted = True
+                            
+                        eval = minimax(board, depth - 1, alpha, beta, False, is_sudden_death)
+                        
+                        board[r][c] = "BP" if promoted else board[mr][mc]
+                        board[mr][mc] = captured
+                        
+                        max_eval = max(max_eval, eval)
+                        alpha = max(alpha, eval)
+                        if beta <= alpha:
+                            break 
+                    if beta <= alpha: break
+        return max_eval if max_eval != -float('inf') else eval_score
+        
+    else: # プレイヤー（白）のターン：点数を最小化してくる
         min_eval = float('inf')
-        moves = get_all_pseudo_moves(board, "W")
-        if not moves: return eval_score
-        for move in moves:
-            r, c, mr, mc = move
-            captured = board[mr][mc]
-            board[mr][mc] = board[r][c]
-            board[r][c] = "--"
-            promoted = False
-            if board[mr][mc] == "WP" and mr == 0:
-                board[mr][mc] = "WQ"
-                promoted = True
-            eval = minimax(board, depth - 1, alpha, beta, True, room_id)
-            board[r][c] = "WP" if promoted else board[mr][mc]
-            board[mr][mc] = captured
-            min_eval = min(min_eval, eval)
-            beta = min(beta, eval)
-            if beta <= alpha: break 
-        return min_eval
+        for r in range(8):
+            for c in range(8):
+                if board[r][c].startswith("W"):
+                    for mr, mc in get_legal_moves_for_board(board, r, c):
+                        captured = board[mr][mc]
+                        moving_piece = board[r][c]
+                        board[mr][mc] = moving_piece
+                        board[r][c] = "--"
+                        promoted = False
+                        if moving_piece == "WP" and mr == 0:
+                            board[mr][mc] = "WQ"
+                            promoted = True
+                            
+                        eval = minimax(board, depth - 1, alpha, beta, True, is_sudden_death)
+                        
+                        board[r][c] = "WP" if promoted else board[mr][mc]
+                        board[mr][mc] = captured
+                        
+                        min_eval = min(min_eval, eval)
+                        beta = min(beta, eval)
+                        if beta <= alpha:
+                            break 
+                    if beta <= alpha: break
+        return min_eval if min_eval != float('inf') else eval_score
 
 # =====================================================================
 # === 7. サーバーの通信ルート（Web API） ===
@@ -557,7 +546,7 @@ def ai_move(room_id):
                     for mr, mc in get_legal_moves_for_board(board, r, c):
                         all_moves.append((r, c, mr, mc))
         
-        SEARCH_DEPTH = 6 if is_sudden_death else 3 
+        SEARCH_DEPTH = 4 if is_sudden_death else 3 
         
         if all_moves:
             for move in all_moves:
@@ -571,7 +560,7 @@ def ai_move(room_id):
                     board[mr][mc] = "BQ"
                     promoted = True
                     
-                score = minimax(board, SEARCH_DEPTH - 1, alpha, beta, False, room_id)
+                score = minimax(board, SEARCH_DEPTH - 1, alpha, beta, False, is_sudden_death)
                 if not is_sudden_death: score += heatmap[mr][mc] * 0.5 
                 
                 board[r][c] = "BP" if promoted else board[mr][mc]
