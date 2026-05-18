@@ -15,7 +15,6 @@
             padding: 25px 15px; margin: 10px auto; border-radius: 16px; 
             box-shadow: 0 15px 35px rgba(0,0,0,0.6); width: 90%; max-width: 350px; box-sizing: border-box; 
         }
-        /* ロビーのタイトルも高級フォントに */
         h1, h3 { font-family: 'Cinzel', 'Noto Sans JP', serif; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
         input { padding: 12px; font-size: 16px; border-radius: 5px; border: none; width: 90%; text-align: center; margin-bottom: 10px; box-sizing: border-box; }
         .btn-create { background-color: #3498db; width: 95%; color: white;}
@@ -24,36 +23,39 @@
         .ai-buttons-container { display: flex; flex-direction: column; gap: 8px; align-items: center; }
         
         /* 📜 スクロール可能な詳細ルール用のスタイル */
-        .rules-box-detail {
-            max-height: 65vh;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-        .rules-section {
-            background: #233140;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            border-left: 4px solid #f1c40f;
-        }
-        .rules-section h4 {
-            margin-top: 0;
-            margin-bottom: 8px;
-            color: #f1c40f;
-            font-size: 15px;
-        }
-        .rules-section p, .rules-section ul {
-            margin: 0;
-            font-size: 13px;
-            line-height: 1.5;
-            color: #ecf0f1;
-            padding-left: 15px;
-        }
+        .rules-box-detail { max-height: 65vh; overflow-y: auto; padding-right: 5px; }
+        .rules-section { background: #233140; padding: 12px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #f1c40f; }
+        .rules-section h4 { margin-top: 0; margin-bottom: 8px; color: #f1c40f; font-size: 15px; }
+        .rules-section p, .rules-section ul { margin: 0; font-size: 13px; line-height: 1.5; color: #ecf0f1; padding-left: 15px; }
         .rules-section ul { padding-left: 20px; }
-
-        /* 🌐 翻訳ボタン用のスタイル（追加） */
         .top-bar-buttons { display: flex; justify-content: flex-end; padding: 10px; max-width: 350px; margin: 0 auto; }
         .icon-btn { background: rgba(0,0,0,0.2); color: var(--text-color); padding: 8px 12px; font-size: 14px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+
+        /* 🌟 スライド演出用の拡張CSS */
+        .tut-slide { display: none; animation: tutFadeIn 0.4s ease; min-height: 420px; }
+        .tut-slide.active { display: block; }
+        .tut-img-box { width: 100%; height: 200px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; margin-bottom: 15px; }
+        .tut-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .tut-anim-area { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .mini-grid { display: grid; gap: 4px; margin: 0 auto; }
+        .grid-3x3 { grid-template-columns: repeat(3, 1fr); width: 150px; }
+        .grid-4x4 { grid-template-columns: repeat(4, 1fr); width: 200px; }
+        .m-sq { width: 46px; height: 46px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 28px; border-radius: 4px; }
+        .m-sq.fog { background: #1e293b; color: transparent !important; }
+        @keyframes pawnWalk { 0% { transform: translateY(0); } 100% { transform: translateY(-50px); } }
+        @keyframes revealRook { 0%, 80% { opacity: 0; background: #1e293b; color: transparent; } 100% { opacity: 1; background: #ecf0f1; color: #2c3e50; } }
+        .pawn-move { animation: pawnWalk 2s infinite alternate ease-in-out; }
+        .rook-reveal { animation: revealRook 2s infinite alternate ease-in-out; }
+        .enemy-faint { opacity: 0.15; transition: opacity 0.5s; }
+        @keyframes sonarPing { 0% { background: #1e293b; color: transparent; } 100% { background: rgba(231, 76, 60, 0.8); color: #fff; box-shadow: inset 0 0 10px #ff0000; } }
+        .sonar-hit { animation: sonarPing 1s infinite alternate; }
+        @keyframes tutFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes bishopPikaPika {
+            0% { box-shadow: 0 0 5px rgba(241, 196, 15, 0.5); border-color: rgba(241, 196, 15, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(241, 196, 15, 1); border-color: rgba(241, 196, 15, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(241, 196, 15, 0.5); border-color: rgba(241, 196, 15, 0.2); }
+        }
+        .bishop-pika { animation: bishopPikaPika 1.5s infinite; border: 1px solid transparent; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -63,58 +65,113 @@
     </div>
 
     <div id="rules-modal" class="switch-overlay" style="display: none;">
-        <div class="switch-box" style="padding: 20px; width: 90%; max-width: 450px; text-align: left; color: #ecf0f1;">
-            <h3 style="color: #f1c40f; text-align: center; margin-top: 0; margin-bottom: 15px;" data-i18n="book_title">📜 暗殺霧チェス 公式ルールブック</h3>
+        <div class="switch-box" style="padding: 20px; width: 90%; max-width: 450px; text-align: left; color: #ecf0f1; min-height: 550px; display: flex; flex-direction: column;">
             
-            <div class="rules-box-detail">
-                <div class="rules-section">
-                    <h4 data-i18n="sec_1_title">👁️ 1. 基本ルール（暗闇の探索）</h4>
-                    <ul>
-                        <li data-i18n="sec_1_li1"><strong>視界の制限:</strong> 盤面は深い霧に包まれており、見えるのは<strong>「自分の駒があるマス」とその「正面1マス」</strong>だけです。</li>
-                        <li data-i18n="sec_1_li2"><strong>索敵ソナー:</strong> 自分の駒が動かせる範囲に敵が潜んでいる場合、そのマスが赤く光り<strong>「⚠️」</strong>と表示されます。</li>
-                        <li data-i18n="sec_1_li3"><strong>行動通知:</strong> 相手が駒を動かすと、画面に「相手がポーンを動かしました」等のログが出ます（場所は秘密です）。</li>
-                    </ul>
+            <div id="slide-section" style="flex-grow: 1;">
+                <div class="tut-slide active">
+                    <h3 style="color: #f1c40f; text-align: center; margin-bottom: 10px;" data-i18n="tut_1_title">アウステルリッツの戦い</h3>
+                    <div class="tut-img-box"><img src="{{ url_for('static', filename='image1.png') }}" alt="History"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_1_desc">このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。</p>
                 </div>
 
-                <div class="rules-section">
-                    <h4 data-i18n="sec_2_title">🚨 2. 暗殺予告（王手と自殺手の禁止）</h4>
-                    <ul>
-                        <li data-i18n="sec_2_li1"><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分側の画面にだけ<strong>「🚨 警告：キングが狙われています！」</strong>と表示されます。相手にはバレていません！</li>
-                        <li data-i18n="sec_2_li2"><strong>自殺手の禁止:</strong> キングがわざと敵の攻撃範囲に飛び込む手や、味方のキングを危険にさらす手（自殺手）は<strong>システムでロックされ、選択できなくなります。</strong></li>
-                    </ul>
+                <div class="tut-slide">
+                    <h3 style="color: #cbd5e1; text-align: center; margin-bottom: 10px;" data-i18n="tut_2_title">戦場の霧とは</h3>
+                    <div class="tut-img-box"><img src="{{ url_for('static', filename='image2.png') }}" alt="Fog"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_2_desc">盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような陣形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。</p>
                 </div>
 
-                <div class="rules-section">
-                    <h4 data-i18n="sec_3_title">🔥 3. 終盤サドンデス（霧の消滅）</h4>
-                    <p data-i18n="sec_3_desc">以下のいずれかの条件を満たした瞬間、<strong>全ての霧が晴れて盤面が完全公開</strong>になり、ガチの公開頭脳戦へ移行します！</p>
-                    <ul>
-                        <li data-i18n="sec_3_li1">対局が<strong>合計 80 ターン</strong>を超えた時</li>
-                        <li data-i18n="sec_3_li2">お互いの生き残っている駒が<strong>合計 10 個以下</strong>になった時</li>
-                    </ul>
+                <div class="tut-slide">
+                    <h3 style="color: #2ecc71; text-align: center; margin-bottom: 10px;" data-i18n="tut_3_title">視界の確保</h3>
+                    <div class="tut-anim-area">
+                        <div class="mini-grid grid-3x3">
+                            <div class="m-sq fog"></div><div class="m-sq rook-reveal">♜</div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq"></div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq pawn-move">♙</div><div class="m-sq fog"></div>
+                        </div>
+                    </div>
+                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_3_desc">自分の駒と<strong>その正面1マス</strong>のみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！</p>
                 </div>
 
-                <div class="rules-section">
-                    <h4 data-i18n="sec_4_title">🏁 4. 勝敗と決着ルール（無限ループ防止）</h4>
-                    <ul>
-                        <li data-i18n="sec_4_li1"><strong>チェックメイト（勝利）:</strong> 敵のキングを王手し、どこにも逃げられない状態に追い詰めればその瞬間に強制終了し、勝利となります！</li>
-                        <li data-i18n="sec_4_li2"><strong>ステイルメイト（引き分け）:</strong> 王手はされていないが、自分の番に動かせる駒が1つもない（自殺手しか残っていない）場合は、手詰まりで<strong>引き分け</strong>となります。</li>
-                        <li data-i18n="sec_4_li3"><strong>戦力不足（引き分け）:</strong> 盤面にキング2人だけしか残らなくなった場合、絶対に決着がつかないため即座に<strong>引き分け</strong>になります。</li>
-                    </ul>
+                <div class="tut-slide">
+                    <h3 style="color: #e74c3c; text-align: center; margin-bottom: 10px;" data-i18n="tut_4_title">ソナーと遮蔽の法則</h3>
+                    <div class="tut-anim-area">
+                        <div class="mini-grid grid-4x4">
+                            <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq enemy-faint">♞</div>
+                            <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog sonar-hit" style="position: relative;">⚠️<span style="position: absolute; font-size: 18px; opacity: 0.4; color: #fff;">♟</span></div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                            <div class="m-sq bishop-pika">♗</div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; margin-top: 10px;" data-i18n="tut_4_desc">移動先に敵がいれば⚠️と光りますが、ソナーに引っかかった駒の種類は分かりません。また、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません（遮蔽の法則）。</p>
                 </div>
 
-                <div class="rules-section" style="border-left-color: #9b59b6;">
-                    <h4 data-i18n="sec_5_title">🤖 5. 对AI战・難易度レベル解説</h4>
-                    <ul>
-                        <li data-i18n="sec_5_li1"><strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。</li>
-                        <li data-i18n="sec_5_li2"><strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。</li>
-                        <li data-i18n="sec_5_li3"><strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。</li>
-                    </ul>
+                <div class="tut-slide">
+                    <h3 style="color: #e67e22; text-align: center; margin-bottom: 10px;" data-i18n="tut_5_title">決戦：アウステルリッツの太陽</h3>
+                    <div class="tut-img-box"><img src="{{ url_for('static', filename='image3.png') }}" alt="Sudden Death"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_5_desc">80ターン経過、または残り駒10個以下で霧が完全に晴れます。ナポレオンが進撃したように、最終決戦（ファイナルステージ）が幕を開けます。</p>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px;">
+                    <button class="icon-btn" onclick="prevSlide()" id="prev-tut-btn">← <span data-i18n="btn_prev">戻る</span></button>
+                    <div id="slide-count" style="font-family: 'Cinzel', serif; color: #f1c40f;">1 / 5</div>
+                    <button class="icon-btn" onclick="nextSlide()" id="next-tut-btn" style="background:#3498db; color:white;"><span data-i18n="btn_next">次へ</span> →</button>
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 15px;">
-                <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin: 0; width: 100%;" data-i18n="btn_close_rules">ルールを閉じる</button>
+            <div id="text-section" style="display: none; flex-grow: 1;">
+                <h3 style="color: #f1c40f; text-align: center; margin-top: 0; margin-bottom: 15px;" data-i18n="book_title">📜 暗殺霧チェス 公式ルールブック</h3>
+                
+                <div class="rules-box-detail">
+                    <div class="rules-section">
+                        <h4 data-i18n="sec_1_title">👁️ 1. 基本ルール（暗闇の探索）</h4>
+                        <ul>
+                            <li data-i18n="sec_1_li1"><strong>視界の制限:</strong> 盤面は深い霧に包まれており、見えるのは<strong>「自分の駒があるマス」とその「正面1マス」</strong>だけです。</li>
+                            <li data-i18n="sec_1_li2"><strong>索敵ソナー:</strong> 自分の駒が動かせる範囲に敵が潜んでいる場合、そのマスが赤く光り<strong>「⚠️」</strong>と表示されます。</li>
+                            <li data-i18n="sec_1_li3"><strong>行動通知:</strong> 相手が駒を動かすと、画面に「相手がポーンを動かしました」等のログが出ます（場所は秘密です）。</li>
+                        </ul>
+                    </div>
+
+                    <div class="rules-section">
+                        <h4 data-i18n="sec_2_title">🚨 2. 暗殺予告（王手と自殺手の禁止）</h4>
+                        <ul>
+                            <li data-i18n="sec_2_li1"><strong>暗殺予告:</strong> 自分のキングが敵の射程に入ると、自分側の画面にだけ<strong>「🚨 警告：キングが狙われています！」</strong>と表示されます。相手にはバレていません！</li>
+                            <li data-i18n="sec_2_li2"><strong>自殺手の禁止:</strong> キングがわざと敵の攻撃範囲に飛び込む手や、味方のキングを危険にさらす手（自殺手）は<strong>システムでロックされ、選択できなくなります。</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="rules-section">
+                        <h4 data-i18n="sec_3_title">🔥 3. 終盤サドンデス（霧の消滅）</h4>
+                        <p data-i18n="sec_3_desc">以下のいずれかの条件を満たした瞬間、<strong>全ての霧が晴れて盤面が完全公開</strong>になり、ガチの公開頭脳戦へ移行します！</p>
+                        <ul>
+                            <li data-i18n="sec_3_li1">対局が<strong>合計 80 ターン</strong>を超えた時</li>
+                            <li data-i18n="sec_3_li2">お互いの生き残っている駒が<strong>合計 10 個以下</strong>になった時</li>
+                        </ul>
+                    </div>
+
+                    <div class="rules-section">
+                        <h4 data-i18n="sec_4_title">🏁 4. 勝敗と決着ルール（無限ループ防止）</h4>
+                        <ul>
+                            <li data-i18n="sec_4_li1"><strong>チェックメイト（勝利）:</strong> 敵のキングを王手し、どこにも逃げられない状態に追い詰めればその瞬間に強制終了し、勝利となります！</li>
+                            <li data-i18n="sec_4_li2"><strong>ステイルメイト（引き分け）:</strong> 王手はされていないが、自分の番に動かせる駒が1つもない（自殺手しか残っていない）場合は、手詰まりで<strong>引き分け</strong>となります。</li>
+                            <li data-i18n="sec_4_li3"><strong>戦力不足（引き分け）:</strong> 盤面にキング2人だけしか残らなくなった場合、絶対に決着がつかないため即座に<strong>引き分け</strong>になります。</li>
+                        </ul>
+                    </div>
+
+                    <div class="rules-section" style="border-left-color: #9b59b6;">
+                        <h4 data-i18n="sec_5_title">🤖 5. 对AI战・難易度レベル解説</h4>
+                        <ul>
+                            <li data-i18n="sec_5_li1"><strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。</li>
+                            <li data-i18n="sec_5_li2"><strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。</li>
+                            <li data-i18n="sec_5_li3"><strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="ready-btn" onclick="closeRules()" style="background-color: #e74c3c; margin: 0; width: 100%;" data-i18n="btn_close_rules">閉じてロビーへ</button>
+                </div>
             </div>
+
         </div>
     </div>
 
@@ -146,7 +203,7 @@
     </div>
 
     <script>
-        // 🌐 ロビー専用・3ヶ国語辞書データ（長文ルールブックも完全網羅）
+        // 🌐 ロビー専用・3ヶ国語辞書データ（スライドと長文ルールブックを完全網羅）
         const dictLobby = {
             ja: {
                 lobby_title: "🌫️ 暗殺霧チェス ロビー", btn_rules: "📖 ルール・AI解説を確認する",
@@ -154,7 +211,16 @@
                 join_room: "🚪 既存の部屋に入る", pwd_placeholder: "パスワードを入力", btn_join: "合流する",
                 play_ai: "🤖 1人で遊ぶ (CPU戦)", ai_desc: "相手の強さを選んでください",
                 ai_1: "🟢 Lv.1 接待プレイ（練習用）", ai_2: "🟠 Lv.2 熱源探知（通常）", ai_3: "🔴 Lv.3 未来予知（ガチ勢向け）",
-                book_title: "📜 暗殺霧チェス 公式ルールブック", btn_close_rules: "ルールを閉じる",
+                
+                tut_1_title: "アウステルリッツの戦い", tut_1_desc: "このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。",
+                tut_2_title: "戦場の霧とは", tut_2_desc: "盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような陣形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。",
+                tut_3_title: "視界の確保", tut_3_desc: "自分の駒とその正面1マスのみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！",
+                tut_4_title: "ソナーと遮蔽の法則", tut_4_desc: "移動先に敵がいれば⚠️と光りますが、ソナーに引っかかった駒の種類は分かりません。また、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません（遮蔽の法則）。",
+                tut_5_title: "決戦：アウステルリッツの太陽", tut_5_desc: "80ターン経過、または残り駒10個以下で霧が完全に晴れます。ナポレオンが進撃したように、最終決戦（ファイナルステージ）が幕を開けます。",
+                
+                btn_prev: "戻る", btn_next: "次へ", btn_to_details: "詳細ルールへ",
+                
+                book_title: "📜 暗殺霧チェス 公式ルールブック", btn_close_rules: "閉じてロビーへ",
                 sec_1_title: "👁️ 1. 基本ルール（暗闇の探索）",
                 sec_1_li1: "<strong>視界の制限:</strong> 盤面は深い霧に包まれており、見えるのは<strong>「自分の駒があるマス」とその「正面1マス」</strong>だけです。",
                 sec_1_li2: "<strong>索敵ソナー:</strong> 自分の駒が動かせる範囲に敵が潜んでいる場合、そのマスが赤く光り<strong>「⚠️」</strong>と表示されます。",
@@ -181,7 +247,16 @@
                 join_room: "🚪 Join Existing Room", pwd_placeholder: "Enter Password", btn_join: "Join Room",
                 play_ai: "🤖 Play vs AI (CPU)", ai_desc: "Select AI Difficulty",
                 ai_1: "🟢 Lv.1 Easy (Practice)", ai_2: "🟠 Lv.2 Heat Tracker (Normal)", ai_3: "🔴 Lv.3 Oracle (Hardcore)",
-                book_title: "📜 Fog Chess Official Rulebook", btn_close_rules: "Close Rules",
+                
+                tut_1_title: "Battle of Austerlitz", tut_1_desc: "Inspired by Napoleon's 1805 tactical masterpiece. Use the morning mist as your ultimate weapon and shield.",
+                tut_2_title: "The Fog of War", tut_2_desc: "The deep fog represents incomplete information. You won't know where the enemy lurks until you take a step.",
+                tut_3_title: "Vision System", tut_3_desc: "You can see your piece and 1 square directly in front. Move forward to clear the fog and reveal enemies!",
+                tut_4_title: "Sonar & Occlusion", tut_4_desc: "If an enemy is in range, the square glows ⚠️, but the piece type is unknown. The first enemy (Pawn) blocks sonar from reaching anyone behind them (Knight).",
+                tut_5_title: "The Sun of Austerlitz", tut_5_desc: "After 80 turns or when 10 pieces remain, the fog clears completely. The Final Stage begins, mirroring Napoleon's decisive strike.",
+                
+                btn_prev: "Back", btn_next: "Next", btn_to_details: "Detailed Rules",
+                
+                book_title: "📜 Fog Chess Official Rulebook", btn_close_rules: "Close & Return",
                 sec_1_title: "👁️ 1. Basic Rules (Exploring the Dark)",
                 sec_1_li1: "<strong>Vision Limit:</strong> The board is wrapped in deep fog. You can only see <strong>your own pieces and 1 square directly in front</strong> of them.",
                 sec_1_li2: "<strong>Sonar:</strong> If an enemy is hiding within your piece's movement range, that square glows red and displays <strong>'⚠️'</strong>.",
@@ -208,7 +283,16 @@
                 join_room: "🚪 加入已有房间", pwd_placeholder: "输入密码", btn_join: "加入房间",
                 play_ai: "🤖 单人游戏 (对战AI)", ai_desc: "请选择AI难度",
                 ai_1: "🟢 Lv.1 简单 (练习)", ai_2: "🟠 Lv.2 热源探测 (普通)", ai_3: "🔴 Lv.3 未来预测 (困难)",
-                book_title: "📜 迷雾象棋 官方规则手册", btn_close_rules: "关闭规则",
+                
+                tut_1_title: "奥斯特利茨战役", tut_1_desc: "以1805年拿破仑利用晨雾击败联军的战役为原型。迷雾是您最强大的武器和护盾。",
+                tut_2_title: "什么是战场迷雾", tut_2_desc: "笼罩棋盤的深霧代表信息的不完全性。在迈出步伐之前，您无法得知敌人的踪跡。",
+                tut_3_title: "视野系统", tut_3_desc: "您可以看到自己的棋子及其正前方1格。前进以驱散迷雾并发现潜伏的敌人！",
+                tut_4_title: "声纳与遮蔽法则", tut_4_desc: "若移动范围内有敌军，格子会闪烁⚠️，但无法确定棋子种类。第一名敌人（兵）会阻挡声纳，使其无法探测到后方的目标（马）。",
+                tut_5_title: "奥斯特利茨的太阳", tut_5_desc: "80回合后或剩余10个棋子时，迷雾将完全消散。如同拿破仑的进军，最终决战（Final Stage）拉开帷幕。",
+                
+                btn_prev: "上一步", btn_next: "下一步", btn_to_details: "查看详细规则",
+                
+                book_title: "📜 迷雾象棋 官方规则手册", btn_close_rules: "返回大厅",
                 sec_1_title: "👁️ 1. 基本规则（黑暗探索）",
                 sec_1_li1: "<strong>视野限制:</strong> 棋盘被浓雾笼罩。你只能看到<strong>“有自己棋子的格子”以及其“正前方1格”</strong>。",
                 sec_1_li2: "<strong>声纳探测:</strong> 当敌方棋子潜伏在你的移动范围内时，该格子会亮起红光并显示<strong>“⚠️”</strong>。",
@@ -234,11 +318,12 @@
         const langs = ['ja', 'en', 'zh'];
         const langLabels = ['日本語', 'English', '中文'];
         let currentLangIdx = parseInt(localStorage.getItem('chess_lang_idx') || '0');
+        let t = dictLobby[langs[currentLangIdx]];
 
         function applyLang() {
-            const t = dictLobby[langs[currentLangIdx]];
+            t = dictLobby[langs[currentLangIdx]];
             document.getElementById('lang-label').innerText = langLabels[currentLangIdx];
-            localStorage.setItem('chess_lang_idx', currentLangIdx); // 設定を対戦画面と共有
+            localStorage.setItem('chess_lang_idx', currentLangIdx); 
             
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
@@ -248,6 +333,12 @@
                 const key = el.getAttribute('data-i18n-placeholder');
                 if (t[key]) el.placeholder = t[key];
             });
+            
+            // スライドのボタンテキストを更新
+            if(document.getElementById('next-tut-btn')) {
+                const slides = document.querySelectorAll('.tut-slide');
+                document.getElementById('next-tut-btn').innerHTML = currentSlideIdx === slides.length - 1 ? t.btn_to_details : `<span data-i18n="btn_next">${t.btn_next}</span> →`;
+            }
         }
 
         function cycleLanguage() {
@@ -255,8 +346,57 @@
             applyLang();
         }
 
-        function openRules() { document.getElementById('rules-modal').style.display = 'flex'; }
-        function closeRules() { document.getElementById('rules-modal').style.display = 'none'; }
+        /* 🌟 スライドとテキストルールの切り替えロジック */
+        let currentSlideIdx = 0;
+        
+        function openRules() { 
+            currentSlideIdx = 0; 
+            document.getElementById('slide-section').style.display = 'block';
+            document.getElementById('text-section').style.display = 'none';
+            document.getElementById('rules-modal').style.display = 'flex'; 
+            updateSlideDisplay();
+        }
+        
+        function closeRules() { 
+            document.getElementById('rules-modal').style.display = 'none'; 
+        }
+        
+        function updateSlideDisplay() {
+            const slides = document.querySelectorAll('.tut-slide');
+            slides.forEach((s, i) => s.classList.toggle('active', i === currentSlideIdx));
+            document.getElementById('slide-count').innerText = `${currentSlideIdx + 1} / ${slides.length}`;
+            document.getElementById('prev-tut-btn').style.visibility = currentSlideIdx === 0 ? "hidden" : "visible";
+            
+            // 最後のスライドに到達したら、ボタンの文字を「詳細ルールへ」に変更する
+            if (currentSlideIdx === slides.length - 1) {
+                document.getElementById('next-tut-btn').innerHTML = t.btn_to_details;
+                document.getElementById('next-tut-btn').style.backgroundColor = "#e67e22"; // オレンジ色に
+            } else {
+                document.getElementById('next-tut-btn').innerHTML = `<span data-i18n="btn_next">${t.btn_next}</span> →`;
+                document.getElementById('next-tut-btn').style.backgroundColor = "#3498db"; // 青色に戻す
+            }
+        }
+        
+        function nextSlide() { 
+            const slides = document.querySelectorAll('.tut-slide');
+            if (currentSlideIdx === slides.length - 1) {
+                // 最後のスライドで「次へ（詳細ルールへ）」を押した時
+                document.getElementById('slide-section').style.display = 'none';
+                document.getElementById('text-section').style.display = 'flex'; // テキストルールを表示
+                document.getElementById('text-section').style.flexDirection = 'column';
+            } else {
+                currentSlideIdx++; 
+                updateSlideDisplay(); 
+            }
+        }
+        
+        function prevSlide() { 
+            if(currentSlideIdx > 0) {
+                currentSlideIdx--; 
+                updateSlideDisplay(); 
+            }
+        }
+
         function createRoom() { location.href = '/room/' + encodeURIComponent(document.getElementById('generated-id').value); }
         function joinRoom() {
             const roomId = document.getElementById('room-input').value.trim();
