@@ -293,6 +293,9 @@
         }
 
         async function updateBoard(forceUpdate = false) {
+            // 🌟 修正：AIが思考演出中（3秒間）は、1秒ごとの自動更新を完全に無視する！（画面のゆがみを防止）
+            if (window.isAiThinking) return;
+
             if(!myColor && !forceUpdate) return;
             const response = await fetch(`/get_game/${roomId}`, {
                 method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
@@ -303,19 +306,24 @@
             if (roomId.startsWith('AI_') && data.current_turn === 'B' && !data.winner) {
                 drawBoard(data); 
                 document.getElementById('ai-thinking').style.display = 'block';
+                
                 if (!window.isAiThinking) {
-                    window.isAiThinking = true;
+                    window.isAiThinking = true; // 🚧 ここで「更新禁止」のロックをかける
+                    
                     Promise.all([
                         fetch(`/ai_move/${roomId}`, { method: 'POST' }),
                         new Promise(resolve => setTimeout(resolve, 3000))
                     ]).then(() => {
-                        window.isAiThinking = false;
+                        window.isAiThinking = false; // 🔓 3秒後にロック解除
                         document.getElementById('ai-thinking').style.display = 'none';
-                        updateBoard(); 
+                        updateBoard(true); // 3秒終わってから確実に盤面を更新
+                    }).catch(() => {
+                        window.isAiThinking = false; // 万が一エラーが起きてもロックを解除する
                     });
                 }
                 return; 
             }
+            
             document.getElementById('ai-thinking').style.display = 'none';
 
             // 🌟 霧晴れ（サドンデス）判定とポップアップ表示
