@@ -339,7 +339,9 @@
                 else if (roomId.startsWith('AI_3_')) roleText = t.role_ai3;
                 document.getElementById('role-display').innerText = t.role_checking.replace("判定中...", "").replace("Checking...", "").replace("判定中...", "") + " " + roleText;
 
-                let isMyTurn = (data.current_turn === myColor || (data.player_count === 1 && !roomId.startsWith('AI_')) || roomId.startsWith('AI_'));
+                // 🌟 修正：AI戦の時にAIのターン中も「自分のターン」と誤判定されるバグを修正
+                let isMyTurn = (data.current_turn === myColor || (data.player_count === 1 && !roomId.startsWith('AI_')));
+                
                 if (isMyTurn && !data.winner && !data.switching_turn) {
                     container.classList.add('your-turn-active'); 
                     turnBox.classList.add('my-turn-border');    
@@ -400,7 +402,8 @@
                         turnText += `<span class="waiting-text">⏳ ${t.waiting_enemy}</span>`;
                     }
 
-                    if (data.last_moved_piece) {
+                    // 🌟 修正：自分が動かした直後（相手のターン中）は「相手が動かした」と表示しないように保留する
+                    if (data.last_moved_piece && isMyTurn) {
                         const pType = data.last_moved_piece[1]; 
                         const pName = t["p_" + pType.toLowerCase()];
                         turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">${t.moved_notice.replace("{0}", pName)}</span>`;
