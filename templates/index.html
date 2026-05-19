@@ -302,28 +302,6 @@
             });
             const data = await response.json();
             
-            // 🌟 AI思考の3秒待機と演出
-            if (roomId.startsWith('AI_') && data.current_turn === 'B' && !data.winner) {
-                drawBoard(data); 
-                document.getElementById('ai-thinking').style.display = 'block';
-                
-                if (!window.isAiThinking) {
-                    window.isAiThinking = true; // 🚧 ここで「更新禁止」のロックをかける
-                    
-                    Promise.all([
-                        fetch(`/ai_move/${roomId}`, { method: 'POST' }),
-                        new Promise(resolve => setTimeout(resolve, 3000))
-                    ]).then(() => {
-                        window.isAiThinking = false; // 🔓 3秒後にロック解除
-                        document.getElementById('ai-thinking').style.display = 'none';
-                        updateBoard(true); // 3秒終わってから確実に盤面を更新
-                    }).catch(() => {
-                        window.isAiThinking = false; // 万が一エラーが起きてもロックを解除する
-                    });
-                }
-                return; 
-            }
-            
             document.getElementById('ai-thinking').style.display = 'none';
 
             // 🌟 霧晴れ（サドンデス）判定とポップアップ表示
@@ -457,7 +435,35 @@
                     switchScreen.style.display = 'flex';
                 } else { switchScreen.style.display = 'none'; }
             } else { switchScreen.style.display = 'none'; }
+            
+            // 🌟 まずはプレイヤーの移動結果を盤面に描画する
             drawBoard(data);
+
+            // 🌟 AI思考の3秒待機と演出（描画完了後に実行）
+            if (roomId.startsWith('AI_') && data.current_turn === 'B' && !data.winner) {
+                if (!window.isAiThinking) {
+                    window.isAiThinking = true; // 🚧 ここで「更新禁止」のロックをかける
+                    
+                    // 確実にブラウザのレンダリングを待つために requestAnimationFrame を2回ネストする
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            document.getElementById('ai-thinking').style.display = 'block';
+                            
+                            Promise.all([
+                                fetch(`/ai_move/${roomId}`, { method: 'POST' }),
+                                new Promise(resolve => setTimeout(resolve, 3000))
+                            ]).then(() => {
+                                window.isAiThinking = false; // 🔓 3秒後にロック解除
+                                document.getElementById('ai-thinking').style.display = 'none';
+                                updateBoard(true); // 3秒終わってから確実に盤面を更新
+                            }).catch(() => {
+                                window.isAiThinking = false; // 万が一エラーが起きてもロックを解除する
+                                document.getElementById('ai-thinking').style.display = 'none';
+                            });
+                        });
+                    });
+                }
+            }
         }
 
         function drawBoard(data) {
