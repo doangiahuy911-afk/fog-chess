@@ -1,670 +1,522 @@
-# =====================================================================
-# === 1. 必要なモジュールのインポートと初期設定 ===
-# =====================================================================
-from flask import Flask, render_template, jsonify, request
-import random
-import string
-import os
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>暗殺霧チェス - 部屋: {{ room_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .rules-content { text-align: left; max-height: 60vh; overflow-y: auto; color: var(--text-color); }
+        .rules-content li { margin-bottom: 12px; }
+        .alert-text { color: #e74c3c; font-weight: bold; animation: alert-blink 1.5s infinite; }
+        @keyframes alert-blink { 0% { opacity: 1; } 50% { opacity: 0.5; color: #ffeb3b; } 100% { opacity: 1; } }
+        .turn-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #f1c40f; transition: border-color 0.3s; }
+        .turn-box.my-turn-border { border-left-color: #2ecc71 !important; }
+        @keyframes check-blink { 0% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } 50% { transform: scale(1.05); opacity: 0.8; text-shadow: 0 0 20px #ff0000; } 100% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px #ff0000; } }
+        .check-warning { color: #ff4757; font-size: 16px; font-weight: bold; display: inline-block; margin-top: 10px; animation: check-blink 0.8s infinite; border: 2px solid #ff4757; padding: 5px 10px; border-radius: 5px; background-color: rgba(255, 71, 87, 0.1); }
+        .waiting-text { color: #bdc3c7; font-size: 14px; font-weight: normal; margin-top: 5px; display: block; }
+        .my-turn-text { color: #2ecc71 !important; font-weight: bold; font-size: 1.1em; }
 
-base_dir = os.path.abspath(os.path.dirname(__file__))
-template_dir = os.path.join(base_dir, 'templates')
-static_dir = os.path.join(base_dir, 'static')
+        /* 🌟 スライド演出用の拡張CSS */
+        .tut-slide { display: none; animation: tutFadeIn 0.4s ease; min-height: 420px; }
+        .tut-slide.active { display: block; }
+        .tut-img-box { width: 100%; height: 200px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; margin-bottom: 15px; }
+        .tut-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .tut-anim-area { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* ミニ盤面の設定 (3x3 & 4x4) */
+        .mini-grid { display: grid; gap: 4px; margin: 0 auto; }
+        .grid-3x3 { grid-template-columns: repeat(3, 1fr); width: 150px; }
+        .grid-4x4 { grid-template-columns: repeat(4, 1fr); width: 200px; }
+        .m-sq { width: 46px; height: 46px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 28px; border-radius: 4px; }
+        .m-sq.fog { background: #1e293b; color: transparent !important; }
 
-app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
+        @keyframes pawnWalk { 0% { transform: translateY(0); } 100% { transform: translateY(-50px); } }
+        @keyframes revealRook { 0%, 80% { opacity: 0; background: #1e293b; color: transparent; } 100% { opacity: 1; background: #ecf0f1; color: #2c3e50; } }
+        .pawn-move { animation: pawnWalk 2s infinite alternate ease-in-out; }
+        .rook-reveal { animation: revealRook 2s infinite alternate ease-in-out; }
 
-# =====================================================================
-# === 2. ゲームの状態管理（初期化・部屋作成） ===
-# =====================================================================
-def reset_board():
-    return [
-        ["BR", "BN", "BB", "BQ", "BK", "BB", "BN", "BR"],
-        ["BP", "BP", "BP", "BP", "BP", "BP", "BP", "BP"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["WP", "WP", "WP", "WP", "WP", "WP", "WP", "WP"],
-        ["WR", "WN", "WB", "WQ", "WK", "WB", "WN", "WR"]
-    ]
+        .enemy-faint { opacity: 0.15; transition: opacity 0.5s; }
+        @keyframes sonarPing { 0% { background: #1e293b; color: transparent; } 100% { background: rgba(231, 76, 60, 0.8); color: #fff; box-shadow: inset 0 0 10px #ff0000; } }
+        .sonar-hit { animation: sonarPing 1s infinite alternate; }
 
-game_rooms = {}
-
-def get_or_create_room(room_id):
-    if room_id not in game_rooms:
-        game_rooms[room_id] = {
-            "board": reset_board(),
-            "current_turn": "W",
-            "selected_pos": None,
-            "winner": None,
-            "switching_turn": False,
-            "players": [],
-            "turn_count": 0,
-            "last_moved_piece": None,
-            "captured_by_W": [], 
-            "captured_by_B": [],
-            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)],
-            "ai_last_move": None # 🌟 追加：AIの直前の動きを記憶（千日手防止用）
+        @keyframes tutFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        @keyframes bishopPikaPika {
+            0% { box-shadow: 0 0 5px rgba(241, 196, 15, 0.5); border-color: rgba(241, 196, 15, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(241, 196, 15, 1); border-color: rgba(241, 196, 15, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(241, 196, 15, 0.5); border-color: rgba(241, 196, 15, 0.2); }
         }
-    return game_rooms[room_id]
+        .bishop-pika { animation: bishopPikaPika 1.5s infinite; border: 1px solid transparent; border-radius: 4px; }
 
-def count_pieces(board):
-    count = 0
-    for r in range(8):
-        for c in range(8):
-            if board[r][c] != "--": count += 1
-    return count
+        /* 🌟 サドンデスポップアップ */
+        #sudden-death-popup {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+            background: linear-gradient(135deg, #f1c40f, #e67e22); color: #000; font-size: 32px; font-weight: bold;
+            padding: 30px 50px; border-radius: 15px; box-shadow: 0 0 50px rgba(241, 196, 15, 0.8);
+            z-index: 2000; text-align: center; opacity: 0; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 4px solid #fff; pointer-events: none;
+        }
+        #sudden-death-popup.show { display: block; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    </style>
+</head>
+<body>
 
-# =====================================================================
-# === 3. チェスの基本ルールと駒の動き ===
-# =====================================================================
-def get_valid_moves_for_board(board, r, c):
-    piece = board[r][c]
-    if piece == "--": return []
-    color = piece[0]
-    p_type = piece[1]
-    moves = []
-    
-    if p_type == "P":
-        direction = -1 if color == "W" else 1
-        start_row = 6 if color == "W" else 1
-        if 0 <= r + direction < 8 and board[r + direction][c] == "--":
-            moves.append([r + direction, c])
-            if r == start_row and board[r + (direction * 2)][c] == "--":
-                moves.append([r + (direction * 2), c])
-        for dc in [-1, 1]:
-            if 0 <= r + direction < 8 and 0 <= c + dc < 8:
-                target = board[r + direction][c + dc]
-                if target != "--" and target[0] != color:
-                    moves.append([r + direction, c + dc])
-    elif p_type == "N":
-        n_moves = [(-2,-1), (-2,1), (-1,-2), (-1,2), (1,-2), (1,2), (2,-1), (2,1)]
-        for dr, dc in n_moves:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < 8 and 0 <= nc < 8:
-                if board[nr][nc] == "--" or board[nr][nc][0] != color: moves.append([nr, nc])
-    elif p_type == "K":
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                if dr == 0 and dc == 0: continue
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < 8 and 0 <= nc < 8:
-                    if board[nr][nc] == "--" or board[nr][nc][0] != color: moves.append([nr, nc])
-    else: 
-        directions = []
-        if p_type == "R": directions = [(-1,0), (1,0), (0,-1), (0,1)]
-        elif p_type == "B": directions = [(-1,-1), (-1,1), (1,-1), (1,1)]
-        elif p_type == "Q": directions = [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1), (1,-1), (1,1)]
-        for dr, dc in directions:
-            nr, nc = r + dr, c + dc
-            while 0 <= nr < 8 and 0 <= nc < 8:
-                target = board[nr][nc]
-                if target == "--": moves.append([nr, nc])
-                elif target[0] != color:
-                    moves.append([nr, nc])
-                    break
-                else: break
-                nr += dr
-                nc += dc
-    return moves
-
-def is_in_check_board(board, color):
-    king_piece = "WK" if color == "W" else "BK"
-    king_pos = None
-    for r in range(8):
-        for c in range(8):
-            if board[r][c] == king_piece:
-                king_pos = [r, c]
-                break
-        if king_pos: break
-    if not king_pos: return False 
-    enemy_color = "B" if color == "W" else "W"
-    for r in range(8):
-        for c in range(8):
-            if board[r][c].startswith(enemy_color):
-                moves = get_valid_moves_for_board(board, r, c)
-                if king_pos in moves: return True
-    return False
-
-def get_legal_moves_for_board(board, r, c):
-    piece = board[r][c]
-    if piece == "--": return []
-    color = piece[0]
-    pseudo_moves = get_valid_moves_for_board(board, r, c)
-    legal_moves = []
-    for mr, mc in pseudo_moves:
-        captured = board[mr][mc]
-        board[mr][mc] = piece
-        board[r][c] = "--"
-        if not is_in_check_board(board, color): legal_moves.append([mr, mc])
-        board[r][c] = piece
-        board[mr][mc] = captured
-    return legal_moves
-
-# =====================================================================
-# === 4. ゲームの進行判定（勝敗・引き分け） ===
-# =====================================================================
-def check_game_over_status(room_id):
-    room = game_rooms[room_id]
-    board = room["board"]
-    turn = room["current_turn"]
-    if count_pieces(board) == 2:
-        room["winner"] = "DRAW_INSUFFICIENT"
-        return
-    has_legal_move = False
-    for r in range(8):
-        for c in range(8):
-            if board[r][c].startswith(turn):
-                if get_legal_moves_for_board(board, r, c):
-                    has_legal_move = True
-                    break
-        if has_legal_move: break
-    if not has_legal_move:
-        if is_in_check_board(board, turn):
-            winner_color = "B" if turn == "W" else "W"
-            room["winner"] = f"WIN_{winner_color}"
-        else:
-            room["winner"] = "DRAW_STALEMATE"
-
-# =====================================================================
-# === 5. 霧（視界）の計算システム ===
-# =====================================================================
-def get_visible_board(room_id, player_color):
-    room = get_or_create_room(room_id)
-    board = room["board"]
-    is_sudden_death = (room["turn_count"] >= 80 or count_pieces(board) <= 10)
-    
-    if room["winner"] or is_sudden_death:
-        visible = []
-        for r in range(8):
-            row = []
-            for c in range(8):
-                row.append("empty" if board[r][c] == "--" else board[r][c])
-            visible.append(row)
-        return visible
-
-    if len(room["players"]) <= 1 and room["switching_turn"]:
-        return [["fog" for _ in range(8)] for _ in range(8)]
-    
-    turn = player_color if player_color in ["W", "B"] else room["current_turn"]
-    visible = [["fog" for _ in range(8)] for _ in range(8)]
-    
-    for r in range(8):
-        for c in range(8):
-            piece = board[r][c]
-            if piece.startswith(turn):
-                visible[r][c] = piece 
-                direction = -1 if turn == "W" else 1
-                if 0 <= r + direction < 8:
-                    front = board[r + direction][c]
-                    visible[r + direction][c] = "empty" if front == "--" else front
+    <div id="unified-rules-modal" class="switch-overlay" style="display: none;">
+        <div class="switch-box" style="padding: 20px; width: 95%; max-width: 500px; text-align: left; color: #ecf0f1; min-height: 550px; display: flex; flex-direction: column;">
+            <div id="slides-container" style="flex-grow: 1;">
                 
-    for r in range(8):
-        for c in range(8):
-            piece = board[r][c]
-            if piece.startswith(turn):
-                valid_moves = get_valid_moves_for_board(board, r, c)
-                for mr, mc in valid_moves:
-                    target = board[mr][mc]
-                    if target != "--" and not target.startswith(turn):
-                        if visible[mr][mc] not in ["fog", "sonar", "empty"]:
-                            if not visible[mr][mc].endswith("_sonar"):
-                                visible[mr][mc] += "_sonar"
-                        else:
-                            visible[mr][mc] = "sonar"
+                <div class="tut-slide active">
+                    <h3 style="color: #f1c40f; text-align: center; margin-bottom: 10px;" data-i18n="tut_1_title">アウステルリッツの戦い</h3>
+                    <div class="tut-img-box"><img src="{{ url_for('static', filename='image1.png') }}" alt="History"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_1_desc">このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。</p>
+                </div>
 
-    if room["turn_count"] // 2 > 0 and (room["turn_count"] // 2) % 5 == 0:
-        for r in range(8):
-            for c in range(8):
-                if board[r][c] in ["WK", "BK"]:
-                    visible[r][c] = board[r][c] 
+                <div class="tut-slide">
+                    <h3 style="color: #cbd5e1; text-align: center; margin-bottom: 10px;" data-i18n="tut_2_title">戦場の霧とは</h3>
+                    <div class="tut-img-box"><img src="{{ url_for('static', filename='image2.png') }}" alt="Fog"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_2_desc">盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような陣形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。</p>
+                </div>
 
-    return visible
+                <div class="tut-slide">
+                    <h3 style="color: #2ecc71; text-align: center; margin-bottom: 10px;" data-i18n="tut_3_title">視界の確保</h3>
+                    <div class="tut-anim-area">
+                        <div class="mini-grid grid-3x3">
+                            <div class="m-sq fog"></div><div class="m-sq rook-reveal">♜</div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq"></div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq pawn-move">♙</div><div class="m-sq fog"></div>
+                        </div>
+                    </div>
+                    <p style="font-size: 14px; margin-top: 15px;" data-i18n="tut_3_desc">自分の駒と<strong>その正面1マス</strong>のみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！</p>
+                </div>
 
-# =====================================================================
-# === 6. 最強AI（レベル3）の頭脳：ミニマックス法（アルファベータ対応版） ===
-# =====================================================================
-def evaluate_board(board, is_sudden_death=False):
-    piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90, "K": 10000}
-    score = 0
-    wk_alive = False
-    bk_alive = False
-    wk_pos = None
-    b_pieces = [] # 🌟 追加：黒の駒の位置を記録
-    
-    for r in range(8):
-        for c in range(8):
-            piece = board[r][c]
-            if piece != "--":
-                if piece == "WK": 
-                    wk_alive = True
-                    wk_pos = (r, c)
-                if piece == "BK": bk_alive = True
-                val = piece_values.get(piece[1], 0)
-                if piece.startswith("B"):
-                    score += val
-                    if piece[1] == "P": score += r 
-                    b_pieces.append((r, c, piece[1])) # 🌟 追加
-                else:
-                    score -= val
-    if not wk_alive: return 99999  
-    if not bk_alive: return -99999 
-    
-    if is_sudden_death and wk_pos:
-        w_r, w_c = wk_pos
-        # 白キングを端に追い詰める評価
-        center_distance_r = max(3.5 - w_r, w_r - 3.5)
-        center_distance_c = max(3.5 - w_c, w_c - 3.5)
-        score += (center_distance_r + center_distance_c) * 15 
-        
-        # 🌟 追加：黒の駒が白キングに近づくほどスコアを加算（距離を詰めるインセンティブ）
-        for br, bc, p_type in b_pieces:
-            dist = abs(br - w_r) + abs(bc - w_c)
-            if p_type in ["Q", "R"]:
-                score += (14 - dist) * 3
-            elif p_type == "K":
-                score += (14 - dist) * 4 # キングも詰めに参加させる
-            elif p_type in ["N", "B"]:
-                score += (14 - dist) * 2
+                <div class="tut-slide">
+                    <h3 style="color: #e74c3c; text-align: center; margin-bottom: 10px;" data-i18n="tut_4_title">ソナーと遮蔽の法則</h3>
+                    <div class="tut-anim-area">
+                        <div class="mini-grid grid-4x4">
+                            <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq enemy-faint">♞</div>
+                            <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog sonar-hit" style="position: relative;">⚠️<span style="position: absolute; font-size: 18px; opacity: 0.4; color: #fff;">♟</span></div><div class="m-sq fog"></div>
+                            <div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                            <div class="m-sq bishop-pika">♗</div><div class="m-sq fog"></div><div class="m-sq fog"></div><div class="m-sq fog"></div>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; margin-top: 10px;" data-i18n="tut_4_desc">移動先に敵がいれば⚠️と光りますが、ソナーに引っかかった駒の種類は分かりません。また、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません（遮蔽の法則）。</p>
+                </div>
+
+                <div class="tut-slide">
+                    <h3 style="color: #e67e22; text-align: center; margin-bottom: 10px;" data-i18n="tut_5_title">決戦：アウステルリッツの太陽</h3>
+                    <div class="tut-img-box"><img src="{{ url_for('static', filename='image3.png') }}" alt="Sudden Death"></div>
+                    <p style="font-size: 14px; line-height: 1.6;" data-i18n="tut_5_desc">80ターン経過、または残り駒10個以下で霧が完全に晴れます。ナポレオンが進撃したように、最終決戦（ファイナルステージ）が幕を開けます。</p>
+                </div>
+
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                <button class="icon-btn" onclick="prevSlide()" id="prev-tut-btn">← <span data-i18n="btn_prev">戻る</span></button>
+                <div id="slide-count" style="font-family: 'Cinzel', serif; color: #f1c40f;">1 / 5</div>
+                <button class="icon-btn" onclick="nextSlide()" id="next-tut-btn" style="background:#3498db; color:white;"><span data-i18n="btn_next">次へ</span> →</button>
+                <button class="ready-btn" onclick="closeUnifiedRules()" id="finish-tut-btn" style="display:none; width:auto; padding:10px 20px; margin:0;" data-i18n="btn_finish">戦場へ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sudden-death-popup">霧が晴れました！<br>さぁ、ファイナルステージです！</div>
+
+    <div id="switch-screen" class="switch-overlay" style="display: none;">
+        <div class="switch-box">
+            <h3 id="next-player-text" style="color: var(--text-color);"></h3>
+            <p style="font-size: 14px; color: var(--text-color); opacity: 0.8;" data-i18n="switch_desc">相手に画面が見えないように席を交代してください。</p>
+            <button class="ready-btn" onclick="confirmReady()" data-i18n="btn_ready">準備完了！</button>
+        </div>
+    </div>
+
+    <div class="game-layout">
+        <div class="board-wrapper">
+            <div id="chess-container"></div>
+            <div id="result-overlay" style="display: none;">
+                <div id="result-message" class="result-text"></div>
+                <div id="result-sub-desc" class="result-desc" data-i18n="tap_to_reveal">タップして盤面の答え合わせをする</div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="top-bar-buttons">
+                <button class="icon-btn" onclick="cycleTheme()">🎨 <span data-i18n="btn_theme">テーマ</span></button>
+                <button class="icon-btn" onclick="cycleLanguage()">🌐 <span id="lang-label">日本語</span></button>
+            </div>
+            <h1 style="margin-bottom: 5px;" data-i18n="app_title">🌫️ 暗殺霧チェス</h1>
+            <p style="color: var(--border-color); font-size: 14px; margin-top: 0;"><span data-i18n="room_label">ルーム:</span> <strong style="color: #f1c40f; font-size: 18px; letter-spacing: 1px;">{{ room_id }}</strong></p>
+            <hr style="border: 0; height: 1px; background: var(--border-color); margin: 15px 0;">
+            <p id="role-display" style="color: #2ecc71; font-weight: bold; font-size: 16px; margin-bottom: 8px;" data-i18n="role_checking">あなたは: 判定中...</p>
+            
+            <div id="ai-thinking" style="display:none; color:#f1c40f; font-weight:bold; text-align:center; margin-bottom:10px; font-size:14px;">⏳ 相手が作戦を考えています...</div>
+            
+            <div class="turn-box" id="turn-box-container">
+                <h3 id="turn-display" style="font-size: 15px; margin: 0; line-height: 1.6;" data-i18n="loading">読み込み中...</h3>
+            </div>
+
+            <button class="btn-how-to" onclick="openUnifiedRules()" data-i18n="btn_open_uni">📖 遊び方とルールを確認</button>
+
+            <div class="graveyard-container">
+                <div class="grave-box my-grave">
+                    <span class="grave-title" data-i18n="grave_yours">⚔️ あなたが奪った駒</span>
+                    <div id="my-captured" class="captured-pieces"></div>
+                </div>
+                <div class="grave-box enemy-grave">
+                    <span class="grave-title" data-i18n="grave_enemy">💀 相手に奪われた駒</span>
+                    <div id="enemy-captured" class="captured-pieces"></div>
+                </div>
+            </div>
+            <div class="controls" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="resetGame()" style="background-color: #95a5a6; flex: 1;" data-i18n="btn_reset">リセット</button>
+                    <button onclick="leaveAndGoLobby()" style="background-color: #7f8c8d; flex: 1;" data-i18n="btn_leave">退出する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const roomId = "{{ room_id }}";
+        if (!localStorage.getItem('chess_player_id')) localStorage.setItem('chess_player_id', 'p_' + Math.random().toString(36).substr(2, 9));
+        const playerId = localStorage.getItem('chess_player_id');
+        let myColor = null;
+
+        const themes = ['theme-dark', 'theme-light', 'theme-wood'];
+        let currentThemeIdx = parseInt(localStorage.getItem('chess_theme_idx') || '0');
+        function applyTheme() { document.body.className = themes[currentThemeIdx]; localStorage.setItem('chess_theme_idx', currentThemeIdx); }
+        function cycleTheme() { currentThemeIdx = (currentThemeIdx + 1) % themes.length; applyTheme(); }
+        applyTheme();
+
+        const dict = {
+            ja: {
+                app_title: "🌫️ 暗殺霧チェス", btn_theme: "テーマ", room_label: "ルーム:", role_checking: "あなたは: 判定中...", loading: "読み込み中...",
+                grave_yours: "⚔️ あなたが奪った駒", grave_enemy: "💀 相手に奪われた駒", btn_reset: "リセット", btn_leave: "退出する",
+                switch_desc: "相手に画面が見えないように席を交代してください。", btn_ready: "準備完了！", tap_to_reveal: "タップして盤面の答え合わせをする",
+                role_w: "【 白（先攻） 】", role_b: "【 黒（後攻） 】", role_ai1: "【 白 】 (vs AI Lv.1: 接待)", role_ai2: "【 白 】 (vs AI Lv.2: 通常)", role_ai3: "【 白 】 (vs AI Lv.3: ガチ)", role_ai4: "【 白 】 (vs AI Lv.4: 解析)",
+                turn_w: "【 白 】", turn_b: "【 黒 】", turn_now: "現在は {0} のターン", waiting_enemy: "相手が作戦を考えています...", 
+                moved_notice: "🔍 相手が 【 {0} 】 を動かしました", check_warn: "🚨 警告：あなたのキングが狙われています！！",
+                king_alert: "⚠️ キング公開中！（次ターンで隠れます）", king_count: "キング公開まで あと {0} ターン",
+                win_dom: "サドンデスの死闘を制し、完全なる覇者となった！", win_silent: "暗闇からの完璧なる奇襲。姿なき暗殺成功！", lose_desc: "暗闇の中に消え去った...。もう一度挑戦しよう！", draw_desc: "お互いに手詰まり、または戦力不足です。",
+                p_p: "ポーン ♟", p_r: "ルーク ♜", p_n: "ナイト ♞", p_b: "ビショップ ♝", p_q: "クイーン ♛", p_k: "キング ♚", next_turn: "次は {0} の番です",
+                uni_title: "📜 遊び方＆詳細ルール", btn_open_uni: "📖 遊び方とルールを確認", btn_close_uni: "戦場に戻る", btn_prev: "戻る", btn_next: "次へ", btn_finish: "戦場へ",
+                tut_1_title: "アウステルリッツの戦い", tut_1_desc: "このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。",
+                tut_2_title: "戦場の霧とは", tut_2_desc: "盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような陣形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。",
+                tut_3_title: "視界の確保", tut_3_desc: "自分の駒とその正面1マスのみが見えます。ポーンを前進させると、その先の霧が晴れて潜んでいた敵を発見できます！",
+                tut_4_title: "ソナーと遮蔽の法則", tut_4_desc: "移動先に敵がいれば⚠️と光りますが、ソナーに引っかかった駒の種類は分かりません。また、1体目の敵（ポーン）に遮られ、その後ろにいる敵（ナイト）はソナーには映りません（遮蔽の法則）。",
+                tut_5_title: "決戦：アウステルリッツの太陽", tut_5_desc: "80ターン経過、または残り駒10個以下で霧が完全に晴れます。ナポレオンが進撃したように、最終決戦（ファイナルステージ）が幕を開けます。"
+            },
+            en: {
+                app_title: "🌫️ Fog Chess", btn_theme: "Theme", room_label: "Room:", role_checking: "You are: Checking...", loading: "Loading...",
+                grave_yours: "⚔️ Your Trophies", grave_enemy: "💀 Lost Pieces", btn_reset: "Reset", btn_leave: "Leave",
+                switch_desc: "Please switch seats so the screen is hidden.", btn_ready: "Ready!", tap_to_reveal: "Tap to reveal the final board",
+                role_w: "[ White (1st) ]", role_b: "[ Black (2nd) ]", role_ai1: "[ White ] vs AI Lv.1", role_ai2: "[ White ] vs AI Lv.2", role_ai3: "[ White ] vs AI Lv.3", role_ai4: "[ White ] vs AI Lv.4",
+                turn_w: "[ White ]", turn_b: "[ Black ]", turn_now: "It's {0}'s turn", waiting_enemy: "Opponent is thinking...", 
+                moved_notice: "🔍 Enemy moved [ {0} ]", check_warn: "🚨 WARNING: Your King is targeted!!",
+                king_alert: "⚠️ Kings Revealed! (Hidden next turn)", king_count: "Kings revealed in {0} turn(s)",
+                win_dom: "You dominated the sudden death and became the true champion!", win_silent: "A perfect ambush from the dark. Silent assassination successful!", lose_desc: "You faded into the darkness... Try again!", draw_desc: "Stalemate or insufficient material.",
+                p_p: "Pawn ♟", p_r: "Rook ♜", p_n: "Knight ♞", p_b: "Bishop ♝", p_q: "Queen ♛", p_k: "King ♚", next_turn: "Next is {0}'s turn",
+                uni_title: "📜 How to Play & Rules", btn_open_uni: "📖 View Rules", btn_close_uni: "Return to Battle", btn_prev: "Back", btn_next: "Next", btn_finish: "Battle!",
+                tut_1_title: "Battle of Austerlitz", tut_1_desc: "Inspired by Napoleon's 1805 tactical masterpiece. Use the morning mist as your ultimate weapon and shield.",
+                tut_2_title: "The Fog of War", tut_2_desc: "The deep fog represents incomplete information. You won't know where the enemy lurks until you take a step.",
+                tut_3_title: "Vision System", tut_3_desc: "You can see your piece and 1 square directly in front. Move forward to clear the fog and reveal enemies!",
+                tut_4_title: "Sonar & Occlusion", tut_4_desc: "If an enemy is in range, the square glows ⚠️, but the piece type is unknown. The first enemy (Pawn) blocks sonar from reaching anyone behind them (Knight).",
+                tut_5_title: "The Sun of Austerlitz", tut_5_desc: "After 80 turns or when 10 pieces remain, the fog clears completely. The Final Stage begins, mirroring Napoleon's decisive strike."
+            },
+            zh: {
+                app_title: "🌫️ 迷雾象棋", btn_theme: "主题", room_label: "房间:", role_checking: "你是: 判定中...", loading: "加载中...",
+                grave_yours: "⚔️ 你缴获的棋子", grave_enemy: "💀 你失去的棋子", btn_reset: "重置游戏", btn_leave: "退出房间",
+                switch_desc: "请交换位置，不要让对方看到屏幕。", btn_ready: "准备完毕！", tap_to_reveal: "点击查看最终棋盘",
+                role_w: "【 白方 (先手) 】", role_b: "【 黑方 (后手) 】", role_ai1: "【 白方 】 (vs AI Lv.1)", role_ai2: "【 白方 】 (vs AI Lv.2)", role_ai3: "【 白方 】 (vs AI Lv.3)", role_ai4: "【 白方 】 (vs AI Lv.4)",
+                turn_w: "【 白方 】", turn_b: "【 黑方 】", turn_now: "现在是 {0} 的回合", waiting_enemy: "对手正在思考中...", 
+                moved_notice: "🔍 对方移动了 【 {0} 】", check_warn: "🚨 警告：你的国王被盯上了！！",
+                king_alert: "⚠️ 国王暴露中！（下回合隐藏）", king_count: "距离国王暴露还有 {0} 回合",
+                win_dom: "在死亡淘汰赛中获胜，成为了真正的霸主！", win_silent: "来自黑暗的完美伏击。无声暗杀成功！", lose_desc: "你消失在黑暗中...再试一次吧！", draw_desc: "双方僵局或兵力不足，平局。",
+                p_p: "兵 ♟", p_r: "车 ♜", p_n: "马 ♞", p_b: "象 ♝", p_q: "后 ♛", p_k: "王 ♚", next_turn: "接下来是 {0} 的回合",
+                uni_title: "📜 玩法与规则", btn_open_uni: "📖 查看玩法与规则", btn_close_uni: "返回战场", btn_prev: "上一步", btn_next: "下一步", btn_finish: "开始",
+                tut_1_title: "奥斯特利茨战役", tut_1_desc: "以1805年拿破仑利用晨雾击败联军的战役为原型。迷雾是您最强大的武器和护盾。",
+                tut_2_title: "什么是战场迷雾", tut_2_desc: "笼罩棋盤的深霧代表信息的不完全性。在迈出步伐之前，您无法得知敌人的踪跡。",
+                tut_3_title: "视野系统", tut_3_desc: "您可以看到自己的棋子及其正前方1格。前进以驱散迷雾并发现潜伏的敌人！",
+                tut_4_title: "声纳与遮蔽法则", tut_4_desc: "若移动范围内有敌军，格子会闪烁⚠️，但无法确定棋子种类。第一名敌人（兵）会阻挡声纳，使其无法探测到后方的目标（马）。",
+                tut_5_title: "奥斯特利茨的太阳", tut_5_desc: "80回合后或剩余10个棋子时，迷雾将完全消散。如同拿破仑的进军，最终决战（Final Stage）拉开帷幕。"
+            }
+        };
+
+        const langs = ['ja', 'en', 'zh'];
+        const langLabels = ['日本語', 'English', '中文'];
+        let currentLangIdx = parseInt(localStorage.getItem('chess_lang_idx') || '0');
+        let t = dict[langs[currentLangIdx]];
+
+        function applyLang() {
+            t = dict[langs[currentLangIdx]];
+            document.getElementById('lang-label').innerText = langLabels[currentLangIdx];
+            localStorage.setItem('chess_lang_idx', currentLangIdx);
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.innerHTML = t[key];
+            });
+            updateBoard(true);
+        }
+        function cycleLanguage() { currentLangIdx = (currentLangIdx + 1) % langs.length; applyLang(); }
+        document.getElementById('result-overlay').onclick = function() { this.style.display = 'none'; }
+
+        /* スライド制御 */
+        let currentSlideIdx = 0;
+        function updateSlideDisplay() {
+            const slides = document.querySelectorAll('.tut-slide');
+            slides.forEach((s, i) => s.classList.toggle('active', i === currentSlideIdx));
+            document.getElementById('slide-count').innerText = `${currentSlideIdx + 1} / ${slides.length}`;
+            document.getElementById('prev-tut-btn').style.visibility = currentSlideIdx === 0 ? "hidden" : "visible";
+            document.getElementById('next-tut-btn').style.display = currentSlideIdx === slides.length - 1 ? "none" : "block";
+            document.getElementById('finish-tut-btn').style.display = currentSlideIdx === slides.length - 1 ? "block" : "none";
+        }
+        function nextSlide() { currentSlideIdx++; updateSlideDisplay(); }
+        function prevSlide() { currentSlideIdx--; updateSlideDisplay(); }
+        function openUnifiedRules() { currentSlideIdx = 0; updateSlideDisplay(); document.getElementById('unified-rules-modal').style.display = 'flex'; }
+        function closeUnifiedRules() { document.getElementById('unified-rules-modal').style.display = 'none'; }
+
+        const icons = { "WP": "♙", "WR": "♖", "WN": "♘", "WB": "♗", "WQ": "♕", "WK": "♔", "BP": "♟", "BR": "♜", "BN": "♞", "BB": "♝", "BQ": "♛", "BK": "♚" };
+
+        async function joinRoom() {
+            const response = await fetch(`/join_room_backend/${roomId}`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
+            });
+            const data = await response.json();
+            if (data.status === 'full') { alert("Room is Full"); return false; }
+            myColor = data.color;
+            applyLang();
+            return true;
+        }
+
+        let suddenDeathShown = false; 
+        function showSuddenDeathPopup() {
+            const popup = document.getElementById('sudden-death-popup');
+            popup.classList.add('show');
+            setTimeout(() => { popup.classList.remove('show'); }, 4000); 
+        }
+
+        async function updateBoard(forceUpdate = false) {
+            // 🌟 修正：AIが思考演出中（3秒間）は、自動更新を完全に無視する！（画面のゆがみを防止）
+            if (window.isAiThinking) return;
+
+            if(!myColor && !forceUpdate) return;
+            const response = await fetch(`/get_game/${roomId}`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
+            });
+            const data = await response.json();
+            
+            // 🌟 AI思考の3秒待機と演出
+            if (roomId.startsWith('AI_') && data.current_turn === 'B' && !data.winner) {
+                drawBoard(data); 
+                document.getElementById('ai-thinking').style.display = 'block';
                 
-    return score
-
-def minimax(board, depth, alpha, beta, is_maximizing, is_sudden_death):
-    eval_score = evaluate_board(board, is_sudden_death)
-    
-    # 🌟 修正：早く勝つ（深さが残っている）ほどスコアを高くし、最短で詰ませるようにする
-    if depth == 0 or eval_score >= 90000 or eval_score <= -90000:
-        if eval_score >= 90000:
-            return eval_score + depth * 1000
-        elif eval_score <= -90000:
-            return eval_score - depth * 1000
-        return eval_score
-
-    if is_maximizing: # AI（黒）のターン：点数を最大化したい
-        max_eval = -float('inf')
-        for r in range(8):
-            for c in range(8):
-                if board[r][c].startswith("B"):
-                    for mr, mc in get_legal_moves_for_board(board, r, c):
-                        captured = board[mr][mc]
-                        moving_piece = board[r][c]
-                        board[mr][mc] = moving_piece
-                        board[r][c] = "--"
-                        promoted = False
-                        if moving_piece == "BP" and mr == 7:
-                            board[mr][mc] = "BQ"
-                            promoted = True
-                            
-                        eval = minimax(board, depth - 1, alpha, beta, False, is_sudden_death)
-                        
-                        board[r][c] = "BP" if promoted else board[mr][mc]
-                        board[mr][mc] = captured
-                        
-                        max_eval = max(max_eval, eval)
-                        alpha = max(alpha, eval)
-                        if beta <= alpha:
-                            break 
-                    if beta <= alpha: break
-        return max_eval if max_eval != -float('inf') else eval_score
-        
-    else: # プレイヤー（白）のターン：点数を最小化してくる
-        min_eval = float('inf')
-        for r in range(8):
-            for c in range(8):
-                if board[r][c].startswith("W"):
-                    for mr, mc in get_legal_moves_for_board(board, r, c):
-                        captured = board[mr][mc]
-                        moving_piece = board[r][c]
-                        board[mr][mc] = moving_piece
-                        board[r][c] = "--"
-                        promoted = False
-                        if moving_piece == "WP" and mr == 0:
-                            board[mr][mc] = "WQ"
-                            promoted = True
-                            
-                        eval = minimax(board, depth - 1, alpha, beta, True, is_sudden_death)
-                        
-                        board[r][c] = "WP" if promoted else board[mr][mc]
-                        board[mr][mc] = captured
-                        
-                        min_eval = min(min_eval, eval)
-                        beta = min(beta, eval)
-                        if beta <= alpha:
-                            break 
-                    if beta <= alpha: break
-        return min_eval if min_eval != float('inf') else eval_score
-
-# =====================================================================
-# === 7. サーバーの通信ルート（Web API） ===
-# =====================================================================
-@app.route('/')
-def lobby():
-    random_id = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-    return render_template('lobby.html', suggested_id=random_id)
-
-@app.route('/room/<room_id>')
-def room(room_id):
-    return render_template('index.html', room_id=room_id)
-
-@app.route('/join_room_backend/<room_id>', methods=['POST'])
-def join_room_backend(room_id):
-    room = get_or_create_room(room_id)
-    data = request.json
-    player_id = data.get('player_id')
-    
-    if player_id in room["players"]:
-        color = "W" if room["players"].index(player_id) == 0 else "B"
-        return jsonify({"status": "already_joined", "color": color})
-    if room_id.startswith("AI_") and len(room["players"]) == 0:
-        room["players"].append(player_id)
-        room["players"].append("BOT_AI")
-        return jsonify({"status": "joined", "color": "W"})
-    if len(room["players"]) >= 2:
-        return jsonify({"status": "full"})
-        
-    room["players"].append(player_id)
-    color = "W" if len(room["players"]) == 1 else "B"
-    return jsonify({"status": "joined", "color": color})
-
-@app.route('/get_game/<room_id>', methods=['POST'])
-def get_game(room_id):
-    room = get_or_create_room(room_id)
-    data = request.json
-    player_id = data.get('player_id')
-    player_color = "spectator"
-    
-    if player_id in room["players"]:
-        player_color = "W" if room["players"].index(player_id) == 0 else "B"
-    if len(room["players"]) == 1 and not room_id.startswith("AI_"):
-        player_color = room["current_turn"]
-        
-    valid_moves = []
-    send_selected = None 
-    
-    if room["current_turn"] == player_color and not room["switching_turn"]:
-        if room["selected_pos"]:
-            sr, sc = room["selected_pos"]
-            valid_moves = get_legal_moves_for_board(room["board"], sr, sc)
-            send_selected = room["selected_pos"]
-        
-    return jsonify({
-        "visible_board": get_visible_board(room_id, player_color),
-        "current_turn": room["current_turn"],
-        "selected": send_selected, 
-        "valid_moves": valid_moves,
-        "winner": room["winner"],
-        "switching_turn": room["switching_turn"],
-        "player_color": player_color,
-        "player_count": len(room["players"]),
-        "turn_count": room["turn_count"],
-        "last_moved_piece": room["last_moved_piece"],
-        "is_check": is_in_check_board(room["board"], player_color) if player_color in ["W", "B"] else False,
-        "captured_by_W": room["captured_by_W"], 
-        "captured_by_B": room["captured_by_B"]  
-    })
-
-@app.route('/click_square/<room_id>', methods=['POST'])
-def click_square(room_id):
-    room = get_or_create_room(room_id)
-    data = request.json
-    player_id = data['player_id']
-    r, c = data['r'], data['c']
-    
-    if player_id not in room["players"]: return jsonify({"status": "not_a_player"})
-    player_color = "W" if room["players"].index(player_id) == 0 else "B"
-    if len(room["players"]) == 1 and not room_id.startswith("AI_"):
-        player_color = room["current_turn"]
-        
-    if room["current_turn"] != player_color: return jsonify({"status": "not_your_turn"})
-    if len(room["players"]) <= 1 and room["switching_turn"]: return jsonify({"status": "waiting_ready"})
-    if room["winner"]: return jsonify({"status": "game_over"})
-    
-    board = room["board"]
-    turn = room["current_turn"]
-    
-    if room["selected_pos"] is None:
-        if board[r][c].startswith(turn):
-            room["selected_pos"] = [r, c]
-            return jsonify({"status": "selected"})
-        return jsonify({"status": "invalid_selection"})
-    else:
-        sr, sc = room["selected_pos"]
-        if sr == r and sc == c:
-            room["selected_pos"] = None
-            return jsonify({"status": "canceled"})
-        elif board[r][c].startswith(turn):
-            room["selected_pos"] = [r, c]
-            return jsonify({"status": "re_selected"})
-            
-        valid_moves = get_legal_moves_for_board(board, sr, sc)
-        if [r, c] not in valid_moves: return jsonify({"status": "invalid_move"})
-        
-        target_piece = board[r][c]
-        moving_piece = board[sr][sc]
-        
-        if target_piece != "--" and target_piece not in ["WK", "BK"]:
-            if turn == "W": room["captured_by_W"].append(target_piece)
-            else: room["captured_by_B"].append(target_piece)
-            
-        if target_piece in ["WK", "BK"]: room["winner"] = f"WIN_{turn}"
-        
-        board[r][c] = moving_piece
-        board[sr][sc] = "--"
-        if moving_piece == "WP" and r == 0: board[r][c] = "WQ"
-        elif moving_piece == "BP" and r == 7: board[r][c] = "BQ"
-        
-        room["selected_pos"] = None
-        room["current_turn"] = "B" if turn == "W" else "W"
-        
-        if turn == "W":
-            room["ai_heatmap"][r][c] += 50.0  
-            room["ai_heatmap"][sr][sc] += 20.0 
-            for dr in [-1, 0, 1]:
-                for dc in [-1, 0, 1]:
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < 8 and 0 <= nc < 8 and (dr != 0 or dc != 0):
-                        room["ai_heatmap"][nr][nc] += 10.0
-
-        check_game_over_status(room_id)
-
-        if len(room["players"]) == 1 and not room_id.startswith("AI_"):
-            room["switching_turn"] = True 
-        else:
-            room["switching_turn"] = False
-        
-        room["last_moved_piece"] = moving_piece
-        room["turn_count"] += 1
-        
-        return jsonify({"status": "moved"})
-
-# =====================================================================
-# === 8. AIの行動ルート（AIのターン処理） ===
-# =====================================================================
-@app.route('/ai_move/<room_id>', methods=['POST'])
-def ai_move(room_id):
-    room = get_or_create_room(room_id)
-    if room["winner"] or room["current_turn"] != "B":
-        return jsonify({"status": "not_ai_turn"})
-
-    board = room["board"]
-    heatmap = room["ai_heatmap"]
-    chosen = None
-    is_sudden_death = (room["turn_count"] >= 80 or count_pieces(board) <= 10)
-
-    if "_1_" in room_id:
-        possible_moves = []
-        for r in range(8):
-            for c in range(8):
-                if board[r][c].startswith("B"):
-                    moves = get_legal_moves_for_board(board, r, c)
-                    p_type = board[r][c][1]
-                    for mr, mc in moves:
-                        target = board[mr][mc]
-                        score = random.randint(0, 5)
-                        if is_sudden_death and p_type == "K":
-                            for wr in range(8):
-                                for wc in range(8):
-                                    if board[wr][wc].startswith("W"):
-                                        if [mr, mc] in get_valid_moves_for_board(board, wr, wc):
-                                            score += 500 
-                        else:
-                            if target != "--" and target.startswith("W"):
-                                score += 20
-                                if target == "WK": score = -1000 
-                        if random.random() < 0.2: score -= 15
-                        possible_moves.append((score, r, c, mr, mc))
-        if possible_moves:
-            possible_moves.sort(reverse=True, key=lambda x: x[0])
-            top_moves = possible_moves[:min(3, len(possible_moves))] 
-            chosen = random.choice(top_moves)
-
-    elif "_2_" in room_id:
-        possible_moves = []
-        piece_values = {"P": 10, "N": 30, "B": 30, "R": 50, "Q": 90}
-        wk_pos = None
-        for r in range(8):
-            for c in range(8):
-                if board[r][c] == "WK": wk_pos = (r, c)
-
-        for r in range(8):
-            for c in range(8):
-                if board[r][c].startswith("B"):
-                    moves = get_legal_moves_for_board(board, r, c)
-                    p_type = board[r][c][1]
-                    for mr, mc in moves:
-                        target = board[mr][mc]
-                        score = random.randint(0, 5) 
-                        if target != "--" and target.startswith("W"):
-                            target_type = target[1]
-                            if target == "WK": score += 100000 
-                            else: score += piece_values.get(target_type, 10) * 10
-                        
-                        if is_sudden_death and wk_pos and p_type != "K":
-                            dist_before = abs(r - wk_pos[0]) + abs(c - wk_pos[1])
-                            dist_after = abs(mr - wk_pos[0]) + abs(mc - wk_pos[1])
-                            if dist_after < dist_before: score += 40 
-                        else:
-                            target_heat = heatmap[mr][mc]
-                            if p_type == "K": score -= target_heat * 2
-                            else: score += target_heat * 0.8
-                            
-                        if p_type == "P": score += (mr - r) * 2 
-                        if is_in_check_board(board, "B") and p_type == "K": score += 500 
-                        possible_moves.append((score, r, c, mr, mc))
-        if possible_moves:
-            possible_moves.sort(reverse=True, key=lambda x: x[0])
-            best_score = possible_moves[0][0]
-            top_moves = [m for m in possible_moves if m[0] >= best_score - 10]
-            chosen = random.choice(top_moves)
-
-    else: 
-        best_score = -float('inf')
-        best_moves = []
-        alpha = -float('inf')
-        beta = float('inf')
-        all_moves = []
-        for r in range(8):
-            for c in range(8):
-                if board[r][c].startswith("B"):
-                    for mr, mc in get_legal_moves_for_board(board, r, c):
-                        all_moves.append((r, c, mr, mc))
-        
-        SEARCH_DEPTH = 4 if is_sudden_death else 3 
-        ai_last_move = room.get("ai_last_move") # 🌟 追加：AIの直前の動きを取得
-        
-        if all_moves:
-            for move in all_moves:
-                r, c, mr, mc = move
-                captured = board[mr][mc]
-                moving_piece = board[r][c]
-                board[mr][mc] = moving_piece
-                board[r][c] = "--"
-                promoted = False
-                if board[mr][mc] == "BP" and mr == 7:
-                    board[mr][mc] = "BQ"
-                    promoted = True
+                if (!window.isAiThinking) {
+                    window.isAiThinking = true; // 🚧 ここで「更新禁止」のロックをかける
                     
-                score = minimax(board, SEARCH_DEPTH - 1, alpha, beta, False, is_sudden_death)
-                if not is_sudden_death: score += heatmap[mr][mc] * 0.5 
-                
-                # 🌟 追加：反復行動（千日手）のペナルティ
-                if ai_last_move:
-                    last_sr, last_sc, last_tr, last_tc = ai_last_move
-                    # 直前に動かした駒を、すぐ元の位置に戻すような動きを嫌がる
-                    if r == last_tr and c == last_tc and mr == last_sr and mc == last_sc:
-                        score -= 50 
-                
-                board[r][c] = "BP" if promoted else board[mr][mc]
-                board[mr][mc] = captured
-                score += random.uniform(0, 2)
-                
-                if score > best_score:
-                    best_score = score
-                    best_moves = [move]
-                elif score == best_score:
-                    best_moves.append(move)
-                alpha = max(alpha, score)
+                    Promise.all([
+                        fetch(`/ai_move/${roomId}`, { method: 'POST' }),
+                        new Promise(resolve => setTimeout(resolve, 3000))
+                    ]).then(() => {
+                        window.isAiThinking = false; // 🔓 3秒後にロック解除
+                        document.getElementById('ai-thinking').style.display = 'none';
+                        updateBoard(true); // 3秒終わってから確実に盤面を更新
+                    }).catch(() => {
+                        window.isAiThinking = false; // 万が一エラーが起きてもロックを解除する
+                    });
+                }
+                return; 
+            }
             
-            if best_moves:
-                move = random.choice(best_moves)
-                chosen = (0, move[0], move[1], move[2], move[3])
+            document.getElementById('ai-thinking').style.display = 'none';
 
-    if not chosen: 
-        check_game_over_status(room_id)
-        return jsonify({"status": "no_moves"})
+            // 🌟 霧晴れ（サドンデス）判定とポップアップ表示
+            if (data.turn_count > 0 && !suddenDeathShown) {
+                let hasFog = data.visible_board.some(row => row.some(cell => cell === "fog"));
+                if (!hasFog && !data.winner) {
+                    suddenDeathShown = true;
+                    showSuddenDeathPopup();
+                }
+            }
 
-    score, sr, sc, tr, tc = chosen
-    target_piece = board[tr][tc]
-    moving_piece = board[sr][sc]
-    if target_piece != "--" and target_piece not in ["WK", "BK"]: room["captured_by_B"].append(target_piece)
-    if target_piece == "WK": room["winner"] = "WIN_B"
-        
-    board[tr][tc] = moving_piece
-    board[sr][sc] = "--"
-    if moving_piece == "BP" and tr == 7: board[tr][tc] = "BQ"
+            const container = document.getElementById('chess-container');
+            const switchScreen = document.getElementById('switch-screen');
+            const resultOverlay = document.getElementById('result-overlay');
+            const resultMessage = document.getElementById('result-message');
+            const resultSubDesc = document.getElementById('result-sub-desc');
+            const turnBox = document.getElementById('turn-box-container');
+            
+            container.innerHTML = '';
+            
+            let roleText = t.role_w;
+            if (myColor === 'B') roleText = t.role_b;
+            if (roomId.startsWith('AI_1_')) roleText = t.role_ai1;
+            else if (roomId.startsWith('AI_2_')) roleText = t.role_ai2;
+            else if (roomId.startsWith('AI_3_')) roleText = t.role_ai3;
+            else if (roomId.startsWith('AI_4_')) roleText = t.role_ai4;
+            document.getElementById('role-display').innerText = t.role_checking.replace("判定中...", "").replace("Checking...", "") + " " + roleText;
 
-    for i in range(8):
-        for j in range(8):
-            room["ai_heatmap"][i][j] *= 0.7 
+            let isMyTurn = (data.current_turn === myColor || (data.player_count === 1 && !roomId.startsWith('AI_')) || roomId.startsWith('AI_'));
+            if (isMyTurn && !data.winner && !data.switching_turn) {
+                container.classList.add('your-turn-active'); 
+                turnBox.classList.add('my-turn-border');    
+            } else {
+                container.classList.remove('your-turn-active');
+                turnBox.classList.remove('my-turn-border');
+            }
 
-    room["ai_last_move"] = (sr, sc, tr, tc) # 🌟 追加：AIの動きを記録
-    room["current_turn"] = "W"
-    room["switching_turn"] = False
-    check_game_over_status(room_id)
-    room["last_moved_piece"] = moving_piece
-    room["turn_count"] += 1
-    return jsonify({"status": "moved"})
+            if (data.winner) {
+                document.getElementById('turn-display').innerHTML = `🎉 ${data.winner}`;
+                switchScreen.style.display = 'none'; 
 
-# =====================================================================
-# === 9. システム系ルート（リセット・退出）と起動設定 ===
-# =====================================================================
-@app.route('/ready_next_turn/<room_id>', methods=['POST'])
-def ready_next_turn(room_id):
-    room = get_or_create_room(room_id)
-    room["switching_turn"] = False
-    return jsonify({"status": "ready"})
+                let myTeamName = myColor === 'W' ? 'W' : 'B';
+                if (roomId.startsWith('AI_')) myTeamName = 'W';
 
-@app.route('/reset/<room_id>', methods=['POST'])
-def reset(room_id):
-    if room_id in game_rooms:
-        players = game_rooms[room_id]["players"]
-        game_rooms[room_id] = {
-            "board": reset_board(), "current_turn": "W", "selected_pos": None, "winner": None, "switching_turn": False, "players": players,
-            "turn_count": 0, "last_moved_piece": None, "captured_by_W": [], "captured_by_B": [],
-            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)],
-            "ai_last_move": None # 🌟 追加
+                if (data.winner.includes("DRAW")) {
+                    resultMessage.innerHTML = "🤝<br>DRAW";
+                    resultMessage.className = "result-text result-win"; 
+                    resultSubDesc.innerText = t.draw_desc;
+                } else if (data.winner.includes(myTeamName)) {
+                    let totalPieces = data.captured_by_W.length + data.captured_by_B.length;
+                    let isSuddenDeathWin = (data.turn_count >= 80 || (32 - totalPieces) <= 10);
+
+                    if (isSuddenDeathWin) {
+                        resultMessage.innerHTML = "⚔️🔥<br>DOMINATION!";
+                        resultMessage.className = "result-text result-domination";
+                        resultSubDesc.innerText = t.win_dom;
+                    } else {
+                        resultMessage.innerHTML = "🎭👥<br>SILENT ASSASSIN";
+                        resultMessage.className = "result-text result-win";
+                        resultSubDesc.innerText = t.win_silent;
+                    }
+                } else {
+                    resultMessage.innerHTML = "💀<br>YOU LOSE...";
+                    resultMessage.className = "result-text result-lose";
+                    resultSubDesc.innerText = t.lose_desc;
+                }
+                
+                if (resultOverlay.style.display === 'none' && !resultOverlay.dataset.shown) {
+                    resultOverlay.style.display = 'flex';
+                    resultOverlay.dataset.shown = "true"; 
+                }
+
+            } else {
+                resultOverlay.style.display = 'none';
+                resultOverlay.dataset.shown = ""; 
+                resultSubDesc.innerText = t.tap_to_reveal;
+
+                let turnTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
+                let turnText = "";
+                if (isMyTurn) {
+                    turnText = t.turn_now.replace("{0}", `<span class="my-turn-text">${turnTeam} (YOUR TURN)</span>`);
+                } else {
+                    turnText = t.turn_now.replace("{0}", turnTeam);
+                }
+                
+                if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
+                    turnText += `<span class="waiting-text">⏳ ${t.waiting_enemy}</span>`;
+                }
+
+                if (data.last_moved_piece) {
+                    const pType = data.last_moved_piece[1]; 
+                    const pName = t["p_" + pType.toLowerCase()];
+                    turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">${t.moved_notice.replace("{0}", pName)}</span>`;
+                }
+
+                if (data.is_check && !data.switching_turn) {
+                    turnText += `<br><span class="check-warning">${t.check_warn}</span>`;
+                }
+
+                let currentRound = Math.floor(data.turn_count / 2);
+                if (currentRound > 0 && currentRound % 5 === 0) {
+                    turnText += ` <br><span class="alert-text">${t.king_alert}</span>`;
+                } else {
+                    let turnsLeft = 5 - (currentRound % 5);
+                    turnText += ` <br><span style="color: #f39c12; font-size: 0.8em; display: inline-block; margin-top: 3px;">${t.king_count.replace("{0}", turnsLeft)}</span>`;
+                }
+                document.getElementById('turn-display').innerHTML = turnText;
+            }
+
+            let viewColor = myColor;
+            if (data.player_count === 1 && !roomId.startsWith('AI_')) viewColor = data.current_turn;
+            if (roomId.startsWith('AI_')) viewColor = 'W';
+
+            let myCaptures = viewColor === 'W' ? data.captured_by_W : data.captured_by_B;
+            let enemyCaptures = viewColor === 'W' ? data.captured_by_B : data.captured_by_W;
+
+            function renderPieces(pieceList) {
+                return pieceList.map(p => {
+                    let pClass = p.startsWith('W') ? 'cap-white' : 'cap-black';
+                    return `<span class="cap-piece ${pClass}">${icons[p]}</span>`;
+                }).join('');
+            }
+            document.getElementById('my-captured').innerHTML = renderPieces(myCaptures);
+            document.getElementById('enemy-captured').innerHTML = renderPieces(enemyCaptures);
+
+            if (data.winner) { drawBoard(data); return; }
+
+            if (data.player_count === 1 && !roomId.startsWith('AI_')) {
+                if (data.switching_turn) {
+                    let nextTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
+                    document.getElementById('next-player-text').innerText = t.next_turn.replace("{0}", nextTeam);
+                    switchScreen.style.display = 'flex';
+                } else { switchScreen.style.display = 'none'; }
+            } else { switchScreen.style.display = 'none'; }
+            drawBoard(data);
         }
-    return jsonify({"status": "reset"})
 
-@app.route('/leave_room/<room_id>', methods=['POST'])
-def leave_room(room_id):
-    data = request.json
-    player_id = data.get('player_id')
-    if room_id in game_rooms and player_id in game_rooms[room_id]["players"]:
-        game_rooms[room_id]["players"].remove(player_id)
-        if len(game_rooms[room_id]["players"]) == 0:
-            del game_rooms[room_id]
-    return jsonify({"status": "left"})
+        function drawBoard(data) {
+            const container = document.getElementById('chess-container');
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    if ((r + c) % 2 === 1) square.classList.add('light-square'); else square.classList.add('dark-square');
+                    
+                    const cell = data.visible_board[r][c];
+                    if (cell === 'fog') {
+                        square.classList.add('fog-square');
+                    } else if (cell === 'sonar') { 
+                        square.classList.add('sonar-square'); 
+                        square.innerText = '⚠️'; 
+                    } else if (cell !== 'empty') {
+                        let pieceKey = cell;
+                        if (cell.endsWith('_sonar')) {
+                            square.classList.add('sonar-square');
+                            pieceKey = cell.replace('_sonar', ''); 
+                        }
+                        square.innerText = icons[pieceKey] || '';
+                    }
+                    
+                    const isMovable = data.valid_moves.some(move => move[0] === r && move[1] === c);
+                    if (isMovable) {
+                        square.classList.remove('fog-square');
+                        square.style.backgroundColor = 'rgba(46, 204, 113, 0.4)'; 
+                        square.style.boxShadow = 'inset 0 0 10px #2ecc71';
+                        square.style.cursor = 'pointer';
+                    }
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+                    if (data.selected && data.selected[0] === r && data.selected[1] === c) {
+                        square.style.border = '3px solid #e74c3c';
+                    }
+
+                    square.onclick = () => clickSquare(r, c);
+                    container.appendChild(square);
+                }
+            }
+        }
+
+        async function clickSquare(r, c) {
+            await fetch(`/click_square/${roomId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ r, c, player_id: playerId }) });
+            updateBoard();
+        }
+        async function confirmReady() { await fetch(`/ready_next_turn/${roomId}`, { method: 'POST' }); updateBoard(); }
+        async function resetGame() { await fetch(`/reset/${roomId}`, { method: 'POST' }); updateBoard(); }
+        async function leaveAndGoLobby() {
+            await fetch(`/leave_room/${roomId}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId }) });
+            location.href = '/';
+        }
+
+        joinRoom().then(success => { if (success) { setInterval(updateBoard, 1000); updateBoard(); } });
+    </script>
+</body>
+</html>

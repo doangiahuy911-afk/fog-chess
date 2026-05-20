@@ -5,10 +5,27 @@ from flask import Flask, render_template, jsonify, request
 import random
 import string
 import os
+from stockfish import Stockfish # 🌟 追加：Stockfishライブラリを読み込む
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 template_dir = os.path.join(base_dir, 'templates')
 static_dir = os.path.join(base_dir, 'static')
+
+import platform # OS判別のために追加
+
+# WindowsとLinux(Render)で読み込むファイルを自動で切り替える
+if platform.system() == "Windows":
+    stockfish_path = os.path.join(base_dir, "stockfish", "stockfish-windows-x86-64-avx2.exe") 
+else:
+    # Linux環境（Renderなど）
+    stockfish_path = os.path.join(base_dir, "stockfish", "stockfish-ubuntu-x86-64")
+
+try:
+    stockfish_engine = Stockfish(path=stockfish_path)
+    stockfish_engine.set_skill_level(20) # 最高レベル（世界最強）に設定
+except Exception as e:
+    print(f"⚠️ Stockfishが読み込めませんでした: {e}")
+    stockfish_engine = None
 
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
@@ -42,7 +59,8 @@ def get_or_create_room(room_id):
             "last_moved_piece": None,
             "captured_by_W": [], 
             "captured_by_B": [],
-            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)] 
+            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)],
+            "ai_last_move": None # 🌟 追加：AIの直前の動きを記憶（千日手防止用）
         }
     return game_rooms[room_id]
 
@@ -52,6 +70,55 @@ def count_pieces(board):
         for c in range(8):
             if board[r][c] != "--": count += 1
     return count
+
+# =====================================================================
+# 🌟 追加：盤面をStockfish用のFEN文字列に変換する関数
+# =====================================================================
+def board_to_fen(board, current_turn):
+    fen_rows = []
+    
+    for r in range(8):
+        empty_count = 0
+        row_str = ""
+        
+        for c in range(8):
+            piece = board[r][c]
+            
+            if piece == "--":
+                empty_count += 1
+            else:
+                if empty_count > 0:
+                    row_str += str(empty_count)
+                    empty_count = 0
+                
+                color = piece[0]
+                p_type = piece[1]
+                
+                if color == "W":
+                    row_str += p_type.upper()
+                else:
+                    row_str += p_type.lower()
+                    
+        if empty_count > 0:
+            row_str += str(empty_count)
+            
+        fen_rows.append(row_str)
+        
+    fen_board = "/".join(fen_rows)
+    turn_str = "w" if current_turn == "W" else "b"
+    fen = f"{fen_board} {turn_str} - - 0 1"
+    
+    return fen
+
+# =====================================================================
+# 🌟 追加：Stockfishの答え(例: "e7e5")を、配列の数字(r, c)に変換する関数
+# =====================================================================
+def uci_to_indices(uci_str):
+    sc = ord(uci_str[0]) - ord('a')
+    sr = 8 - int(uci_str[1])
+    tc = ord(uci_str[2]) - ord('a')
+    tr = 8 - int(uci_str[3])
+    return sr, sc, tr, tc
 
 # =====================================================================
 # === 3. チェスの基本ルールと駒の動き ===
@@ -228,6 +295,8 @@ def evaluate_board(board, is_sudden_death=False):
     wk_alive = False
     bk_alive = False
     wk_pos = None
+    b_pieces = [] # 🌟 追加：黒の駒の位置を記録
+    
     for r in range(8):
         for c in range(8):
             piece = board[r][c]
@@ -240,6 +309,7 @@ def evaluate_board(board, is_sudden_death=False):
                 if piece.startswith("B"):
                     score += val
                     if piece[1] == "P": score += r 
+                    b_pieces.append((r, c, piece[1])) # 🌟 追加
                 else:
                     score -= val
     if not wk_alive: return 99999  
@@ -247,14 +317,32 @@ def evaluate_board(board, is_sudden_death=False):
     
     if is_sudden_death and wk_pos:
         w_r, w_c = wk_pos
+        # 白キングを端に追い詰める評価
         center_distance_r = max(3.5 - w_r, w_r - 3.5)
         center_distance_c = max(3.5 - w_c, w_c - 3.5)
         score += (center_distance_r + center_distance_c) * 15 
+        
+        # 🌟 追加：黒の駒が白キングに近づくほどスコアを加算（距離を詰めるインセンティブ）
+        for br, bc, p_type in b_pieces:
+            dist = abs(br - w_r) + abs(bc - w_c)
+            if p_type in ["Q", "R"]:
+                score += (14 - dist) * 3
+            elif p_type == "K":
+                score += (14 - dist) * 4 # キングも詰めに参加させる
+            elif p_type in ["N", "B"]:
+                score += (14 - dist) * 2
+                
     return score
 
 def minimax(board, depth, alpha, beta, is_maximizing, is_sudden_death):
     eval_score = evaluate_board(board, is_sudden_death)
+    
+    # 🌟 修正：早く勝つ（深さが残っている）ほどスコアを高くし、最短で詰ませるようにする
     if depth == 0 or eval_score >= 90000 or eval_score <= -90000:
+        if eval_score >= 90000:
+            return eval_score + depth * 1000
+        elif eval_score <= -90000:
+            return eval_score - depth * 1000
         return eval_score
 
     if is_maximizing: # AI（黒）のターン：点数を最大化したい
@@ -534,7 +622,24 @@ def ai_move(room_id):
             top_moves = [m for m in possible_moves if m[0] >= best_score - 10]
             chosen = random.choice(top_moves)
 
+    # 🌟 ここから追加：レベル4（サドンデス時のみStockfish発動！）
+    elif "_4_" in room_id and is_sudden_death and stockfish_engine:
+        # 1. 盤面をFENに翻訳してStockfishに渡す
+        fen = board_to_fen(board, "B")
+        stockfish_engine.set_fen_position(fen)
+        
+        # 2. 世界最強の「次の一手」を計算させる
+        best_move_uci = stockfish_engine.get_best_move()
+        
+        if best_move_uci:
+            # 3. 答えを配列の数字に変換して適用する
+            sr, sc, tr, tc = uci_to_indices(best_move_uci)
+            chosen = (99999, sr, sc, tr, tc) # スコアは適当でOK
+        else:
+            chosen = None # 投了や詰みの場合
+
     else: 
+        # 🌟 レベル3、および「レベル4だけどまだ霧がある時」はここ（自作AI）
         best_score = -float('inf')
         best_moves = []
         alpha = -float('inf')
@@ -547,6 +652,7 @@ def ai_move(room_id):
                         all_moves.append((r, c, mr, mc))
         
         SEARCH_DEPTH = 4 if is_sudden_death else 3 
+        ai_last_move = room.get("ai_last_move") # 🌟 追加：AIの直前の動きを取得
         
         if all_moves:
             for move in all_moves:
@@ -562,6 +668,13 @@ def ai_move(room_id):
                     
                 score = minimax(board, SEARCH_DEPTH - 1, alpha, beta, False, is_sudden_death)
                 if not is_sudden_death: score += heatmap[mr][mc] * 0.5 
+                
+                # 🌟 追加：反復行動（千日手）のペナルティ
+                if ai_last_move:
+                    last_sr, last_sc, last_tr, last_tc = ai_last_move
+                    # 直前に動かした駒を、すぐ元の位置に戻すような動きを嫌がる
+                    if r == last_tr and c == last_tc and mr == last_sr and mc == last_sc:
+                        score -= 50 
                 
                 board[r][c] = "BP" if promoted else board[mr][mc]
                 board[mr][mc] = captured
@@ -596,6 +709,7 @@ def ai_move(room_id):
         for j in range(8):
             room["ai_heatmap"][i][j] *= 0.7 
 
+    room["ai_last_move"] = (sr, sc, tr, tc) # 🌟 追加：AIの動きを記録
     room["current_turn"] = "W"
     room["switching_turn"] = False
     check_game_over_status(room_id)
@@ -619,7 +733,8 @@ def reset(room_id):
         game_rooms[room_id] = {
             "board": reset_board(), "current_turn": "W", "selected_pos": None, "winner": None, "switching_turn": False, "players": players,
             "turn_count": 0, "last_moved_piece": None, "captured_by_W": [], "captured_by_B": [],
-            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)]
+            "ai_heatmap": [[0.0 for _ in range(8)] for _ in range(8)],
+            "ai_last_move": None # 🌟 追加
         }
     return jsonify({"status": "reset"})
 

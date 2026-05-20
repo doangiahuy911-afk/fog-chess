@@ -31,6 +31,9 @@
         .top-bar-buttons { display: flex; justify-content: flex-end; padding: 10px; max-width: 350px; margin: 0 auto; }
         .icon-btn { background: rgba(0,0,0,0.2); color: var(--text-color); padding: 8px 12px; font-size: 14px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
 
+        /* 🌟 追加：レベル4ボタンのスタイル一貫性の保持 */
+        .btn-ai-4 { background-color: #8e44ad; color: white; width: 100%; }
+
         /* 🌟 スライド演出用の拡張CSS */
         .tut-slide { display: none; animation: tutFadeIn 0.4s ease; min-height: 420px; }
         .tut-slide.active { display: block; }
@@ -163,6 +166,7 @@
                             <li data-i18n="sec_5_li1"><strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。</li>
                             <li data-i18n="sec_5_li2"><strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。</li>
                             <li data-i18n="sec_5_li3"><strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。</li>
+                            <li data-i18n="sec_5_li4"><strong>🔥 Lv.4 極限解析:</strong> 世界最強チェスエンジン「Stockfish」を搭載。霧が晴れたサドンデス状態に入った瞬間、全知全能の思考回路が起動し、一切の猶予なく完璧な必勝手順であなたを追い詰めます。</li>
                         </ul>
                     </div>
                 </div>
@@ -199,6 +203,7 @@
             <button class="btn-ai-1" onclick="playAI(1)" data-i18n="ai_1">🟢 Lv.1 接待プレイ（練習用）</button>
             <button class="btn-ai-2" onclick="playAI(2)" data-i18n="ai_2">🟠 Lv.2 熱源探知（通常）</button>
             <button class="btn-ai-3" onclick="playAI(3)" data-i18n="ai_3">🔴 Lv.3 未来予知（ガチ勢向け）</button>
+            <button class="btn-ai-4" onclick="playAI(4)" data-i18n="ai_4">🔥 Lv.4 極限解析（Stockfish連携）</button>
         </div>
     </div>
 
@@ -210,7 +215,7 @@
                 create_room: "🔑 新しく部屋を作る", room_pwd_desc: "友達に送るパスワード", btn_create: "部屋を作る",
                 join_room: "🚪 既存の部屋に入る", pwd_placeholder: "パスワードを入力", btn_join: "合流する",
                 play_ai: "🤖 1人で遊ぶ (CPU戦)", ai_desc: "相手の強さを選んでください",
-                ai_1: "🟢 Lv.1 接待プレイ（練習用）", ai_2: "🟠 Lv.2 熱源探知（通常）", ai_3: "🔴 Lv.3 未来予知（ガチ勢向け）",
+                ai_1: "🟢 Lv.1 接待プレイ（練習用）", ai_2: "🟠 Lv.2 熱源探知（通常）", ai_3: "🔴 Lv.3 未来予知（ガチ勢向け）", ai_4: "🔥 Lv.4 極限解析（Stockfish連携）",
                 
                 tut_1_title: "アウステルリッツの戦い", tut_1_desc: "このゲームは1805年、ナポレオンが朝霧を利用して敵を翻弄した伝説の戦いをモデルにしています。霧はあなたの最大の武器であり、盾です。",
                 tut_2_title: "戦場の霧とは", tut_2_desc: "盤面を覆う深い霧は「情報の不完全さ」を意味します。敵がどこに、どのような陣形で潜んでいるか。あなたは一歩踏み出すまで知ることはできません。",
@@ -239,14 +244,15 @@
                 sec_5_title: "🤖 5. 对AI战・難易度レベル解説",
                 sec_5_li1: "<strong>🟢 Lv.1 接待プレイ:</strong> 練習・テスト用。ランダムな動きが多く、王手のチャンスもスルーします。サドンデスに入ると戦意を喪失し、自ら首を差し出しにきます。",
                 sec_5_li2: "<strong>🟠 Lv.2 熱源探知:</strong> 通常モード。プレイヤーが直前に動かしたマスの「足跡（熱源）」を記憶し、暗闇から執拗に追跡してきます。サドンデス後はキングへ一直線に突撃します。",
-                sec_5_li3: "<strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。"
+                sec_5_li3: "<strong>🔴 Lv.3 未来予知:</strong> ガチ勢向け。霧を無視して盤面全てを透視し、常に<strong>3手先の未来（AI→人→AI）を計算</strong>して罠を張る最強マシーン。サドンデス後は、最短ルートであなたをハメ殺す「詰み計算」を開始します。",
+                sec_5_li4: "<strong>🔥 Lv.4 極限解析:</strong> 世界最強チェスエンジン「Stockfish」を搭載。霧が晴れたサドンデス状態に入った瞬間、全知全能の思考回路が起動し、一切の猶予なく完璧な必勝手順であなたを追い詰めます。"
             },
             en: {
                 lobby_title: "🌫️ Fog Chess Lobby", btn_rules: "📖 View Rules & AI Info",
                 create_room: "🔑 Create New Room", room_pwd_desc: "Password to share with a friend", btn_create: "Create Room",
                 join_room: "🚪 Join Existing Room", pwd_placeholder: "Enter Password", btn_join: "Join Room",
                 play_ai: "🤖 Play vs AI (CPU)", ai_desc: "Select AI Difficulty",
-                ai_1: "🟢 Lv.1 Easy (Practice)", ai_2: "🟠 Lv.2 Heat Tracker (Normal)", ai_3: "🔴 Lv.3 Oracle (Hardcore)",
+                ai_1: "🟢 Lv.1 Easy (Practice)", ai_2: "🟠 Lv.2 Heat Tracker (Normal)", ai_3: "🔴 Lv.3 Oracle (Hardcore)", ai_4: "🔥 Lv.4 Perfect Analysis (Stockfish)",
                 
                 tut_1_title: "Battle of Austerlitz", tut_1_desc: "Inspired by Napoleon's 1805 tactical masterpiece. Use the morning mist as your ultimate weapon and shield.",
                 tut_2_title: "The Fog of War", tut_2_desc: "The deep fog represents incomplete information. You won't know where the enemy lurks until you take a step.",
@@ -275,14 +281,15 @@
                 sec_5_title: "🤖 5. AI Difficulty Breakdown",
                 sec_5_li1: "<strong>🟢 Lv.1 Easy:</strong> For practice. Makes random moves and ignores check opportunities. In Sudden Death, it loses motivation and walks into danger.",
                 sec_5_li2: "<strong>🟠 Lv.2 Normal:</strong> Tracks the 'footprints' (heat map) of your last moved square, hunting you from the dark. Charges straight for your King in Sudden Death.",
-                sec_5_li3: "<strong>🔴 Lv.3 Hardcore:</strong> For pros. Sees through the fog entirely, using <strong>Minimax (Alpha-Beta) to calculate 3 moves ahead</strong>. Instantly calculates perfect checkmate routes in Sudden Death."
+                sec_5_li3: "<strong>🔴 Lv.3 Hardcore:</strong> For pros. Sees through the fog entirely, using <strong>Minimax (Alpha-Beta) to calculate 3 moves ahead</strong>. Instantly calculates perfect checkmate routes in Sudden Death.",
+                sec_5_li4: "<strong>🔥 Lv.4 Perfect Analysis:</strong> Backed by the world-renowned 'Stockfish' chess engine. Once the fog clears in Sudden Death, it unleashes raw, flawless calculating power to checkmate you via the most optimal route imaginable."
             },
             zh: {
                 lobby_title: "🌫️ 迷雾象棋 大厅", btn_rules: "📖 查看规则与AI说明",
                 create_room: "🔑 创建新房间", room_pwd_desc: "发送给朋友的密码", btn_create: "创建房间",
                 join_room: "🚪 加入已有房间", pwd_placeholder: "输入密码", btn_join: "加入房间",
                 play_ai: "🤖 单人游戏 (对战AI)", ai_desc: "请选择AI难度",
-                ai_1: "🟢 Lv.1 简单 (练习)", ai_2: "🟠 Lv.2 热源探测 (普通)", ai_3: "🔴 Lv.3 未来预测 (困难)",
+                ai_1: "🟢 Lv.1 简单 (练习)", ai_2: "🟠 Lv.2 热源探测 (普通)", ai_3: "🔴 Lv.3 未来预测 (困难)", ai_4: "🔥 Lv.4 极致解析（联动Stockfish）",
                 
                 tut_1_title: "奥斯特利茨战役", tut_1_desc: "以1805年拿破仑利用晨雾击败联军的战役为原型。迷雾是您最强大的武器和护盾。",
                 tut_2_title: "什么是战场迷雾", tut_2_desc: "笼罩棋盤的深霧代表信息的不完全性。在迈出步伐之前，您无法得知敌人的踪跡。",
@@ -294,24 +301,25 @@
                 
                 book_title: "📜 迷雾象棋 官方规则手册", btn_close_rules: "返回大厅",
                 sec_1_title: "👁️ 1. 基本规则（黑暗探索）",
-                sec_1_li1: "<strong>视野限制:</strong> 棋盘被浓雾笼罩。你只能看到<strong>“有自己棋子的格子”以及其“正前方1格”</strong>。",
-                sec_1_li2: "<strong>声纳探测:</strong> 当敌方棋子潜伏在你的移动范围内时，该格子会亮起红光并显示<strong>“⚠️”</strong>。",
+                sec_1_li1: "<strong>视野限制:</strong> 棋盘被浓雾笼罩。你只能看到“有自己棋子的格子”以及其“正前方1格”。",
+                sec_1_li2: "<strong>声纳探测:</strong> 当敌方棋子潜伏在你的移动范围内时，该格子会亮起红光并显示“⚠️”。",
                 sec_1_li3: "<strong>行动通知:</strong> 对方移动棋子时，屏幕会显示日志（如“对方移动了兵”），但具体位置保密。",
                 sec_2_title: "🚨 2. 暗杀警告（将军与禁止自杀步）",
-                sec_2_li1: "<strong>暗杀预告:</strong> 当你的国王进入敌方射程时，只有你的屏幕会显示<strong>“🚨 警告：国王被瞄准！”</strong>。对方并不知道国王的位置！",
-                sec_2_li2: "<strong>禁止自杀步:</strong> 故意将国王移入危险区域或使国王暴露的移动会<strong>被系统锁定，无法选择。</strong>",
+                sec_2_li1: "<strong>暗杀预告:</strong> 当你的国王进入敌方射程时，只有你的屏幕会显示“🚨 警告：国王被瞄准！”。对方并不知道国王的位置！",
+                sec_2_li2: "<strong>禁止自杀步:</strong> 故意将国王移入危险区域或使国王暴露的移动会被系统锁定，无法选择。",
                 sec_3_title: "🔥 3. 残局猝死赛（迷雾消散）",
-                sec_3_desc: "满足以下任一条件时，<strong>所有迷雾将瞬间消散</strong>，棋盘完全公开，进入纯脑力对决！",
-                sec_3_li1: "对局总回合数超过 <strong>80 回合</strong>。",
-                sec_3_li2: "双方场上剩余棋子总数减少至 <strong>10 个或以下</strong>。",
+                sec_3_desc: "满足以下任一条件时，所有迷雾将瞬间消散，棋盘完全公开，进入纯脑力对决！",
+                sec_3_li1: "对局总回合数超过 80 回合。",
+                sec_3_li2: "双方场上剩余棋子总数减少至 10 个或以下。",
                 sec_4_title: "🏁 4. 胜负与平局规则",
                 sec_4_li1: "<strong>将死（胜利）:</strong> 将军敌方国王且对方无路可逃时，游戏立即结束并获得胜利！",
-                sec_4_li2: "<strong>僵局（平局）:</strong> 轮到你的回合时，如果你没有任何可移动的合法棋子（所有移动均为自杀步），则判为<strong>平局</strong>。",
-                sec_4_li3: "<strong>兵力不足（平局）:</strong> 如果棋盘上只剩下两个国王，因绝对无法分出胜负，立即判为<strong>平局</strong>。",
+                sec_4_li2: "<strong>僵局（平局）:</strong> 轮到你的回合时，如果你没有任何可移动的合法棋子（所有移动均为自杀步），则判为平局。",
+                sec_4_li3: "<strong>兵力不足（平局）:</strong> 如果棋盘上只剩下两个国王，因绝对无法分出胜负，立即判为平局。",
                 sec_5_title: "🤖 5. AI 难度级别解析",
                 sec_5_li1: "<strong>🟢 Lv.1 简单:</strong> 供练习使用。移动随机且经常错过将军机会。进入猝死赛后会失去斗志，主动送命。",
                 sec_5_li2: "<strong>🟠 Lv.2 普通:</strong> 记忆你上一回合移动格子的“足迹（热源）”，在黑暗中紧追不舍。进入猝死赛后直奔国王而来。",
-                sec_5_li3: "<strong>🔴 Lv.3 困难:</strong> 适合高玩。完全透视迷雾，使用 <strong>Minimax (Alpha-Beta) 算法预判未来3步</strong>。进入猝死赛后开启最短绝杀计算。"
+                sec_5_li3: "<strong>🔴 Lv.3 困难:</strong> 适合高玩。完全透视迷雾，使用 Minimax (Alpha-Beta) 算法预判未来3步。进入猝死赛后开启最短绝杀计算。",
+                sec_5_li4: "<strong>🔥 Lv.4 极致解析:</strong> 搭载世界最强的国际象棋引擎“Stockfish”。在迷雾消散进入猝死赛的瞬间，全知全能的计算引擎将被激活，以无懈可击的完美着法进行绝对绝杀。"
             }
         };
 
