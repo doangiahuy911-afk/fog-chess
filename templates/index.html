@@ -295,177 +295,191 @@
             setTimeout(() => { popup.classList.remove('show'); }, 4000); 
         }
 
+        // 🌟 修正：非同期通信の重複衝突（画面バグ、タイマースキップ）を防止する排他ロックフラグ
+        let isUpdating = false;
+
         async function updateBoard(forceUpdate = false) {
-            // 🌟 修正：AIが思考演出中（3秒間）は、自動更新を完全に無視する！（画面のゆがみを防止）
+            // 🌟 AI思考の演出が実行中の場合は、自動更新リクエストを一切遮断する
             if (window.isAiThinking) return;
+            // 🌟 既に別ルートでサーバー更新を実行中の場合、重ねてリクエストしない（Race Conditionの防止）
+            if (isUpdating && !forceUpdate) return;
 
             if(!myColor && !forceUpdate) return;
-            const response = await fetch(`/get_game/${roomId}`, {
-                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
-            });
-            const data = await response.json();
-            
-            // 🌟 AI思考の3秒待機と演出
-            if (roomId.startsWith('AI_') && data.current_turn === 'B' && !data.winner) {
-                drawBoard(data); 
-                document.getElementById('ai-thinking').style.display = 'block';
+
+            isUpdating = true; // ロックをかける
+            try {
+                const response = await fetch(`/get_game/${roomId}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ player_id: playerId })
+                });
+                const data = await response.json();
                 
-                if (!window.isAiThinking) {
-                    window.isAiThinking = true; // 🚧 ここで「更新禁止」のロックをかける
+                // 🌟 AI思考の3秒待機と演出
+                if (roomId.startsWith('AI_') && data.current_turn === 'B' && !data.winner) {
+                    drawBoard(data); 
+                    document.getElementById('ai-thinking').style.display = 'block';
                     
-                    Promise.all([
-                        fetch(`/ai_move/${roomId}`, { method: 'POST' }),
-                        new Promise(resolve => setTimeout(resolve, 3000))
-                    ]).then(() => {
-                        window.isAiThinking = false; // 🔓 3秒後にロック解除
-                        document.getElementById('ai-thinking').style.display = 'none';
-                        updateBoard(true); // 3秒終わってから確実に盤面を更新
-                    }).catch(() => {
-                        window.isAiThinking = false; // 万が一エラーが起きてもロックを解除する
-                    });
-                }
-                return; 
-            }
-            
-            document.getElementById('ai-thinking').style.display = 'none';
-
-            // 🌟 霧晴れ（サドンデス）判定とポップアップ表示
-            if (data.turn_count > 0 && !suddenDeathShown) {
-                let hasFog = data.visible_board.some(row => row.some(cell => cell === "fog"));
-                if (!hasFog && !data.winner) {
-                    suddenDeathShown = true;
-                    showSuddenDeathPopup();
-                }
-            }
-
-            const container = document.getElementById('chess-container');
-            const switchScreen = document.getElementById('switch-screen');
-            const resultOverlay = document.getElementById('result-overlay');
-            const resultMessage = document.getElementById('result-message');
-            const resultSubDesc = document.getElementById('result-sub-desc');
-            const turnBox = document.getElementById('turn-box-container');
-            
-            container.innerHTML = '';
-            
-            let roleText = t.role_w;
-            if (myColor === 'B') roleText = t.role_b;
-            if (roomId.startsWith('AI_1_')) roleText = t.role_ai1;
-            else if (roomId.startsWith('AI_2_')) roleText = t.role_ai2;
-            else if (roomId.startsWith('AI_3_')) roleText = t.role_ai3;
-            else if (roomId.startsWith('AI_4_')) roleText = t.role_ai4;
-            document.getElementById('role-display').innerText = t.role_checking.replace("判定中...", "").replace("Checking...", "") + " " + roleText;
-
-            let isMyTurn = (data.current_turn === myColor || (data.player_count === 1 && !roomId.startsWith('AI_')) || roomId.startsWith('AI_'));
-            if (isMyTurn && !data.winner && !data.switching_turn) {
-                container.classList.add('your-turn-active'); 
-                turnBox.classList.add('my-turn-border');    
-            } else {
-                container.classList.remove('your-turn-active');
-                turnBox.classList.remove('my-turn-border');
-            }
-
-            if (data.winner) {
-                document.getElementById('turn-display').innerHTML = `🎉 ${data.winner}`;
-                switchScreen.style.display = 'none'; 
-
-                let myTeamName = myColor === 'W' ? 'W' : 'B';
-                if (roomId.startsWith('AI_')) myTeamName = 'W';
-
-                if (data.winner.includes("DRAW")) {
-                    resultMessage.innerHTML = "🤝<br>DRAW";
-                    resultMessage.className = "result-text result-win"; 
-                    resultSubDesc.innerText = t.draw_desc;
-                } else if (data.winner.includes(myTeamName)) {
-                    let totalPieces = data.captured_by_W.length + data.captured_by_B.length;
-                    let isSuddenDeathWin = (data.turn_count >= 80 || (32 - totalPieces) <= 10);
-
-                    if (isSuddenDeathWin) {
-                        resultMessage.innerHTML = "⚔️🔥<br>DOMINATION!";
-                        resultMessage.className = "result-text result-domination";
-                        resultSubDesc.innerText = t.win_dom;
-                    } else {
-                        resultMessage.innerHTML = "🎭👥<br>SILENT ASSASSIN";
-                        resultMessage.className = "result-text result-win";
-                        resultSubDesc.innerText = t.win_silent;
+                    if (!window.isAiThinking) {
+                        window.isAiThinking = true; // 🚧 ここで「更新禁止」のロックをかける
+                        
+                        Promise.all([
+                            fetch(`/ai_move/${roomId}`, { method: 'POST' }),
+                            new Promise(resolve => setTimeout(resolve, 3000))
+                        ]).then(() => {
+                            window.isAiThinking = false; // 🔓 3秒後にロック解除
+                            document.getElementById('ai-thinking').style.display = 'none';
+                            updateBoard(true); // 3秒終わってから確実に盤面を更新
+                        }).catch(() => {
+                            window.isAiThinking = false; // 万が一エラーが起きてもロックを解除する
+                        });
                     }
-                } else {
-                    resultMessage.innerHTML = "💀<br>YOU LOSE...";
-                    resultMessage.className = "result-text result-lose";
-                    resultSubDesc.innerText = t.lose_desc;
+                    return; 
                 }
                 
-                if (resultOverlay.style.display === 'none' && !resultOverlay.dataset.shown) {
-                    resultOverlay.style.display = 'flex';
-                    resultOverlay.dataset.shown = "true"; 
+                document.getElementById('ai-thinking').style.display = 'none';
+
+                // 🌟 霧晴れ（サドンデス）判定とポップアップ表示
+                if (data.turn_count > 0 && !suddenDeathShown) {
+                    let hasFog = data.visible_board.some(row => row.some(cell => cell === "fog"));
+                    if (!hasFog && !data.winner) {
+                        suddenDeathShown = true;
+                        showSuddenDeathPopup();
+                    }
                 }
 
-            } else {
-                resultOverlay.style.display = 'none';
-                resultOverlay.dataset.shown = ""; 
-                resultSubDesc.innerText = t.tap_to_reveal;
-
-                let turnTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
-                let turnText = "";
-                if (isMyTurn) {
-                    turnText = t.turn_now.replace("{0}", `<span class="my-turn-text">${turnTeam} (YOUR TURN)</span>`);
-                } else {
-                    turnText = t.turn_now.replace("{0}", turnTeam);
-                }
+                const container = document.getElementById('chess-container');
+                const switchScreen = document.getElementById('switch-screen');
+                const resultOverlay = document.getElementById('result-overlay');
+                const resultMessage = document.getElementById('result-message');
+                const resultSubDesc = document.getElementById('result-sub-desc');
+                const turnBox = document.getElementById('turn-box-container');
                 
-                if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
-                    turnText += `<span class="waiting-text">⏳ ${t.waiting_enemy}</span>`;
-                }
+                container.innerHTML = '';
+                
+                let roleText = t.role_w;
+                if (myColor === 'B') roleText = t.role_b;
+                if (roomId.startsWith('AI_1_')) roleText = t.role_ai1;
+                else if (roomId.startsWith('AI_2_')) roleText = t.role_ai2;
+                else if (roomId.startsWith('AI_3_')) roleText = t.role_ai3;
+                else if (roomId.startsWith('AI_4_')) roleText = t.role_ai4;
+                document.getElementById('role-display').innerText = t.role_checking.replace("判定中...", "").replace("Checking...", "") + " " + roleText;
 
-                if (data.last_moved_piece) {
-                    const pType = data.last_moved_piece[1]; 
-                    const pName = t["p_" + pType.toLowerCase()];
-                    turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">${t.moved_notice.replace("{0}", pName)}</span>`;
-                }
-
-                if (data.is_check && !data.switching_turn) {
-                    turnText += `<br><span class="check-warning">${t.check_warn}</span>`;
-                }
-
-                let currentRound = Math.floor(data.turn_count / 2);
-                if (currentRound > 0 && currentRound % 5 === 0) {
-                    turnText += ` <br><span class="alert-text">${t.king_alert}</span>`;
+                let isMyTurn = (data.current_turn === myColor || (data.player_count === 1 && !roomId.startsWith('AI_')) || roomId.startsWith('AI_'));
+                if (isMyTurn && !data.winner && !data.switching_turn) {
+                    container.classList.add('your-turn-active'); 
+                    turnBox.classList.add('my-turn-border');    
                 } else {
-                    let turnsLeft = 5 - (currentRound % 5);
-                    turnText += ` <br><span style="color: #f39c12; font-size: 0.8em; display: inline-block; margin-top: 3px;">${t.king_count.replace("{0}", turnsLeft)}</span>`;
+                    container.classList.remove('your-turn-active');
+                    turnBox.classList.remove('my-turn-border');
                 }
-                document.getElementById('turn-display').innerHTML = turnText;
-            }
 
-            let viewColor = myColor;
-            if (data.player_count === 1 && !roomId.startsWith('AI_')) viewColor = data.current_turn;
-            if (roomId.startsWith('AI_')) viewColor = 'W';
+                if (data.winner) {
+                    document.getElementById('turn-display').innerHTML = `🎉 ${data.winner}`;
+                    switchScreen.style.display = 'none'; 
 
-            let myCaptures = viewColor === 'W' ? data.captured_by_W : data.captured_by_B;
-            let enemyCaptures = viewColor === 'W' ? data.captured_by_B : data.captured_by_W;
+                    let myTeamName = myColor === 'W' ? 'W' : 'B';
+                    if (roomId.startsWith('AI_')) myTeamName = 'W';
 
-            function renderPieces(pieceList) {
-                return pieceList.map(p => {
-                    let pClass = p.startsWith('W') ? 'cap-white' : 'cap-black';
-                    return `<span class="cap-piece ${pClass}">${icons[p]}</span>`;
-                }).join('');
-            }
-            document.getElementById('my-captured').innerHTML = renderPieces(myCaptures);
-            document.getElementById('enemy-captured').innerHTML = renderPieces(enemyCaptures);
+                    if (data.winner.includes("DRAW")) {
+                        resultMessage.innerHTML = "🤝<br>DRAW";
+                        resultMessage.className = "result-text result-win"; 
+                        resultSubDesc.innerText = t.draw_desc;
+                    } else if (data.winner.includes(myTeamName)) {
+                        let totalPieces = data.captured_by_W.length + data.captured_by_B.length;
+                        let isSuddenDeathWin = (data.turn_count >= 80 || (32 - totalPieces) <= 10);
 
-            if (data.winner) { drawBoard(data); return; }
+                        if (isSuddenDeathWin) {
+                            resultMessage.innerHTML = "⚔️🔥<br>DOMINATION!";
+                            resultMessage.className = "result-text result-domination";
+                            resultSubDesc.innerText = t.win_dom;
+                        } else {
+                            resultMessage.innerHTML = "🎭👥<br>SILENT ASSASSIN";
+                            resultMessage.className = "result-text result-win";
+                            resultSubDesc.innerText = t.win_silent;
+                        }
+                    } else {
+                        resultMessage.innerHTML = "💀<br>YOU LOSE...";
+                        resultMessage.className = "result-text result-lose";
+                        resultSubDesc.innerText = t.lose_desc;
+                    }
+                    
+                    if (resultOverlay.style.display === 'none' && !resultOverlay.dataset.shown) {
+                        resultOverlay.style.display = 'flex';
+                        resultOverlay.dataset.shown = "true"; 
+                    }
 
-            if (data.player_count === 1 && !roomId.startsWith('AI_')) {
-                if (data.switching_turn) {
-                    let nextTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
-                    document.getElementById('next-player-text').innerText = t.next_turn.replace("{0}", nextTeam);
-                    switchScreen.style.display = 'flex';
+                } else {
+                    resultOverlay.style.display = 'none';
+                    resultOverlay.dataset.shown = ""; 
+                    resultSubDesc.innerText = t.tap_to_reveal;
+
+                    let turnTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
+                    let turnText = "";
+                    if (isMyTurn) {
+                        turnText = t.turn_now.replace("{0}", `<span class="my-turn-text">${turnTeam} (YOUR TURN)</span>`);
+                    } else {
+                        turnText = t.turn_now.replace("{0}", turnTeam);
+                    }
+                    
+                    if (data.current_turn !== myColor && !roomId.startsWith('AI_')) {
+                        turnText += `<span class="waiting-text">⏳ ${t.waiting_enemy}</span>`;
+                    }
+
+                    if (data.last_moved_piece) {
+                        const pType = data.last_moved_piece[1]; 
+                        const pName = t["p_" + pType.toLowerCase()];
+                        turnText += `<br><span style="color: #34db98; font-size: 0.9em; display: inline-block; margin-top: 5px;">${t.moved_notice.replace("{0}", pName)}</span>`;
+                    }
+
+                    if (data.is_check && !data.switching_turn) {
+                        turnText += `<br><span class="check-warning">${t.check_warn}</span>`;
+                    }
+
+                    let currentRound = Math.floor(data.turn_count / 2);
+                    if (currentRound > 0 && currentRound % 5 === 0) {
+                        turnText += ` <br><span class="alert-text">${t.king_alert}</span>`;
+                    } else {
+                        let turnsLeft = 5 - (currentRound % 5);
+                        turnText += ` <br><span style="color: #f39c12; font-size: 0.8em; display: inline-block; margin-top: 3px;">${t.king_count.replace("{0}", turnsLeft)}</span>`;
+                    }
+                    document.getElementById('turn-display').innerHTML = turnText;
+                }
+
+                let viewColor = myColor;
+                if (data.player_count === 1 && !roomId.startsWith('AI_')) viewColor = data.current_turn;
+                if (roomId.startsWith('AI_')) viewColor = 'W';
+
+                let myCaptures = viewColor === 'W' ? data.captured_by_W : data.captured_by_B;
+                let enemyCaptures = viewColor === 'W' ? data.captured_by_B : data.captured_by_W;
+
+                function renderPieces(pieceList) {
+                    return pieceList.map(p => {
+                        let pClass = p.startsWith('W') ? 'cap-white' : 'cap-black';
+                        return `<span class="cap-piece ${pClass}">${icons[p]}</span>`;
+                    }).join('');
+                }
+                document.getElementById('my-captured').innerHTML = renderPieces(myCaptures);
+                document.getElementById('enemy-captured').innerHTML = renderPieces(enemyCaptures);
+
+                if (data.winner) { drawBoard(data); return; }
+
+                if (data.player_count === 1 && !roomId.startsWith('AI_')) {
+                    if (data.switching_turn) {
+                        let nextTeam = data.current_turn === 'W' ? t.turn_w : t.turn_b;
+                        document.getElementById('next-player-text').innerText = t.next_turn.replace("{0}", nextTeam);
+                        switchScreen.style.display = 'flex';
+                    } else { switchScreen.style.display = 'none'; }
                 } else { switchScreen.style.display = 'none'; }
-            } else { switchScreen.style.display = 'none'; }
-            drawBoard(data);
+                drawBoard(data);
+            } catch (err) {
+                console.error("更新エラー:", err);
+            } finally {
+                isUpdating = false; // 🔓 処理完了または例外発生時に、確実にロックを解除
+            }
         }
 
         function drawBoard(data) {
             const container = document.getElementById('chess-container');
+            container.innerHTML = ''; // 🌟 重複描画防止のため事前にクリアする
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const square = document.createElement('div');
